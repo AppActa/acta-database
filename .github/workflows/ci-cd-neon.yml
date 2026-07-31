@@ -18,7 +18,7 @@ permissions:
 
 jobs:
     deploy-teste:
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request_target'
         name: Deploy na branch de testes do banco
         runs-on: ubuntu-latest
 
@@ -75,6 +75,16 @@ jobs:
             run: |
                 sudo apt-get update -y
                 sudo apt-get install -y postgresql-client
+
+          - name: Exclui banco atual
+            env:
+                DATABASE_URL: ${{ secrets.NEON_PROD_DATABASE_URL }}
+            run: |
+                psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+                    DROP SCHEMA IF EXISTS public CASCADE;
+                    DROP SCHEMA IF EXISTS pdca CASCADE;
+                    DROP SCHEMA IF EXISTS auditoria CASCADE;
+                SQL
 
           - name: Aplica script.sql no banco de produção
             env:
