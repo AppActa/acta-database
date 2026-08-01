@@ -1,0 +1,8 @@
+python-dotenv
+faker
+pandas
+sqlalchemy
+psycopg2-binary
+argon2-cffi
+papermill
+ipykernel
