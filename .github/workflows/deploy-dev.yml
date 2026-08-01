@@ -1,13 +1,7 @@
-name: deploy-neon
+name: deploy-neon-dev
 
 on:
     pull_request_target:
-        branches:
-            - 'main'
-        paths:
-            - 'sql/script.sql'
-
-    push:
         branches:
             - 'main'
         paths:
@@ -18,7 +12,6 @@ permissions:
 
 jobs:
     deploy-teste:
-        if: github.event_name == 'pull_request_target'
         name: Deploy na branch de testes do banco
         runs-on: ubuntu-latest
 
@@ -61,33 +54,3 @@ jobs:
                         repo: context.repo.repo,
                         body: mensagem
                     })
-    
-    deploy-producao:
-        if: github.event_name == 'push'
-        name: Deploy no banco em produção
-        runs-on: ubuntu-latest
-
-        steps:
-          - name: Checkout
-            uses: actions/checkout@v4
-
-          - name: Instala postgres
-            run: |
-                sudo apt-get update -y
-                sudo apt-get install -y postgresql-client
-
-          - name: Exclui banco atual
-            env:
-                DATABASE_URL: ${{ secrets.NEON_PROD_DATABASE_URL }}
-            run: |
-                psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
-                    DROP SCHEMA IF EXISTS public CASCADE;
-                    DROP SCHEMA IF EXISTS pdca CASCADE;
-                    DROP SCHEMA IF EXISTS auditoria CASCADE;
-                SQL
-
-          - name: Aplica script.sql no banco de produção
-            env:
-                DATABASE_URL: ${{ secrets.NEON_PROD_DATABASE_URL }}
-            run: |
-                psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f  sql/script.sql
