@@ -368,3 +368,75 @@ CREATE TABLE IF NOT EXISTS auditoria.log_tarefa (
     operacao VARCHAR(40) NOT NULL CHECK (operacao IN ('INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'READ', 'EXPORT')),
     CONSTRAINT log_tarefa_json_check CHECK (jsonb_typeof(dados_antes) = 'object' AND jsonb_typeof(dados_depois) = 'object')
 );
+
+
+
+-----------Anexos (alterar no modelo lógico)
+
+CREATE TABLE IF NOT EXISTS pdca.anexo (
+    id BIGSERIAL PRIMARY KEY,
+
+    id_storage TEXT UNIQUE NOT NULL,
+
+    id_empresa BIGINT NOT NULL
+        REFERENCES empresa(id) ON DELETE RESTRICT,
+
+    id_ciclo BIGINT NOT NULL
+        REFERENCES pdca.ciclo(id) ON DELETE RESTRICT,
+
+    criado_por BIGINT
+        REFERENCES usuario_sistema(id) ON DELETE SET NULL,
+
+    categoria VARCHAR(40) NOT NULL CHECK (
+        categoria IN (
+            'TREINAMENTO',
+            'PLANO_ACAO',
+            'CAUSA_RAIZ',
+            'PROBLEMA',
+            'META',
+            'RELATORIO',
+            'LICAO_APRENDIDA',
+            'FORMULARIO',
+            'EVIDENCIA',
+            'OUTRO'
+        )
+    ),
+
+    referencia_origem VARCHAR(100), --> campo para armazenar o id da origem -> categoria = 'PLANO_ACAO' -> id_plano_acao
+    nome_arquivo VARCHAR(255) NOT NULL,
+
+    tipo_arquivo VARCHAR(150) NOT NULL,
+
+    tamanho_arquivo BIGINT NOT NULL
+        CHECK (tamanho_arquivo >= 0),
+
+    bucket_arquivo VARCHAR(100) NOT NULL
+        DEFAULT 'acta-arquivos',
+
+    caminho_arquivo TEXT NOT NULL UNIQUE,
+
+    status VARCHAR(30) NOT NULL DEFAULT 'ATIVO' CHECK (
+        status IN (
+            'PROCESSANDO',
+            'ATIVO',
+            'ERRO',
+            'EXCLUIDO'
+        )
+    ),
+
+    descricao TEXT,
+
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    atualizado_em TIMESTAMPTZ,
+    excluido_em TIMESTAMPTZ,
+
+    CONSTRAINT anexo_tipo_arquivo_check CHECK (
+        tipo_arquivo = 'application/pdf'
+        OR tipo_arquivo LIKE 'image/%'
+        OR tipo_arquivo =
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        OR tipo_arquivo =
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ),
+
+);
