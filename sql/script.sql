@@ -368,3 +368,105 @@ CREATE TABLE IF NOT EXISTS auditoria.log_tarefa (
     operacao VARCHAR(40) NOT NULL CHECK (operacao IN ('INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'READ', 'EXPORT')),
     CONSTRAINT log_tarefa_json_check CHECK (jsonb_typeof(dados_antes) = 'object' AND jsonb_typeof(dados_depois) = 'object')
 );
+
+
+
+-----------Anexos (alterar no modelo lógico)
+
+CREATE TABLE IF NOT EXISTS pdca.anexo (
+    id BIGSERIAL PRIMARY KEY,
+
+    id_empresa BIGINT NOT NULL,
+    id_ciclo BIGINT NOT NULL,
+
+    criado_por BIGINT
+        REFERENCES public.usuario_sistema(id)
+        ON DELETE SET NULL,
+
+    categoria VARCHAR(40) NOT NULL CHECK (
+        categoria IN (
+            'TREINAMENTO',
+            'PLANO_ACAO',
+            'CAUSA_RAIZ',
+            'PROBLEMA',
+            'META',
+            'RELATORIO',
+            'LICAO_APRENDIDA',
+            'FORMULARIO',
+            'EVIDENCIA',
+            'OUTRO'
+        )
+    ),
+
+    -- ID do registro relacionado à categoria.
+    -- Exemplo: categoria = 'PLANO_ACAO', id_origem = id do plano.
+    id_origem BIGINT,
+
+    nome_arquivo VARCHAR(255) NOT NULL,
+
+    tipo_arquivo VARCHAR(150) NOT NULL,
+
+    tamanho_arquivo BIGINT NOT NULL
+        CHECK (tamanho_arquivo > 0),
+
+    bucket_arquivo VARCHAR(100) NOT NULL
+        DEFAULT 'acta-arquivos',
+
+    caminho_arquivo TEXT NOT NULL,
+
+    status VARCHAR(30) NOT NULL
+        DEFAULT 'PROCESSANDO'
+        CHECK (
+            status IN (
+                'PROCESSANDO',
+                'ATIVO',
+                'ERRO',
+                'EXCLUIDO'
+            )
+        ),
+
+    descricao TEXT,
+
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    excluido_em TIMESTAMPTZ,
+
+    CONSTRAINT fk_anexo_empresa
+        FOREIGN KEY (id_empresa)
+        REFERENCES public.empresa(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_anexo_ciclo
+        FOREIGN KEY (id_ciclo)
+        REFERENCES pdca.ciclo(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT uq_anexo_storage
+        UNIQUE (bucket_arquivo, caminho_arquivo),
+
+    CONSTRAINT ck_anexo_tipo_arquivo
+        CHECK (
+            tipo_arquivo IN (
+                'application/pdf',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'text/csv',
+                'text/plain'
+            )
+            OR tipo_arquivo LIKE 'image/%'
+        ),
+
+    CONSTRAINT ck_anexo_exclusao
+        CHECK (
+            (status = 'EXCLUIDO' AND excluido_em IS NOT NULL)
+            OR
+            (status <> 'EXCLUIDO' AND excluido_em IS NULL)
+        ),
+
+    CONSTRAINT ck_anexo_origem
+        CHECK (
+            categoria = 'OUTRO'
+            OR id_origem IS NOT NULL
+        )
+);
