@@ -209,7 +209,7 @@ BEGIN
 
     UPDATE pdca.problema SET peso = media, atualizado_em = NOW() WHERE id = problema;
 
-    RETURN NEW;
+    RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -252,51 +252,18 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION pdca.fn_sinc_data_tarefa_status()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.status = 'EM_ANDAMENTO' THEN
-        NEW.data_inicio_real = NOW();
+    IF NEW.status IS DISTINCT FROM OLD.status THEN
 
-    ELSIF NEW.status = 'CONCLUIDA' THEN
-        NEW.data_fim_real = NOW();
+        IF NEW.status = 'EM_ANDAMENTO' THEN
+            IF NEW.data_inicio_real IS NULL THEN
+                NEW.data_inicio_real := NOW();
+            END IF;
 
-    ELSIF NEW.status = 'CANCELADA' THEN
-        NEW.data_fim_real = NOW();
-    END IF;
+            NEW.data_fim_real := NULL;
 
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- 11 (não deixa ter mais de um principal por telefone/email/endereco)
-CREATE OR REPLACE FUNCTION public.fn_validar_principal()
-RETURNS TRIGGER AS $$
-DECLARE
-    qtd_principal INTEGER := 0;
-BEGIN       
-    IF NEW.principal THEN
-
-        IF TG_TABLE_NAME = 'telefone_colaborador' THEN
-            SELECT COUNT(*) INTO qtd_principal FROM public.telefone_colaborador WHERE id_colaborador = NEW.id_colaborador 
-            AND principal = TRUE AND id IS DISTINCT FROM NEW.id;
-            
-        ELSIF TG_TABLE_NAME = 'email_colaborador' THEN
-            SELECT COUNT(*) INTO qtd_principal FROM public.email_colaborador WHERE id_colaborador = NEW.id_colaborador 
-            AND principal = TRUE AND id IS DISTINCT FROM NEW.id;
-            
-        ELSIF TG_TABLE_NAME = 'endereco_empresa' THEN
-            SELECT COUNT(*) INTO qtd_principal FROM public.endereco_empresa WHERE id_empresa = NEW.id_empresa 
-            AND principal = TRUE AND id IS DISTINCT FROM NEW.id;
-            
-        ELSIF TG_TABLE_NAME = 'telefone_empresa' THEN
-            SELECT COUNT(*) INTO qtd_principal FROM public.telefone_empresa WHERE id_empresa = NEW.id_empresa 
-            AND principal = TRUE AND id IS DISTINCT FROM NEW.id;
-            
-        ELSIF TG_TABLE_NAME = 'email_empresa' THEN
-            SELECT COUNT(*) INTO qtd_principal FROM public.email_empresa WHERE id_empresa = NEW.id_empresa 
-            AND principal = TRUE AND id IS DISTINCT FROM NEW.id;
-        END IF;
-
-        IF qtd_principal > 0 THEN
-            RAISE EXCEPTION 'Já existe um registro principal cadastrado.';
+        ELSIF NEW.status IN ('CONCLUIDA', 'CANCELADA') THEN
+            NEW.data_fim_real := NOW();
+        
         END IF;
 
     END IF;
@@ -305,7 +272,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 12 (calcula o avanço do ciclo em percentual)
+-- 11 (calcula o avanço do ciclo em percentual)
 CREATE OR REPLACE FUNCTION pdca.fn_avanco_ciclo(p_id_ciclo BIGINT)
 RETURNS NUMERIC AS $$
 DECLARE
@@ -325,15 +292,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 13 (adiciona na tabela de relação usuario_ciclo o responsável por aquele ciclo)
+-- 12 (adiciona na tabela de relação usuario_ciclo o responsável por aquele ciclo)
 CREATE OR REPLACE FUNCTION pdca.fn_vincular_responsavel_ciclo()
 RETURNS TRIGGER AS $$
 BEGIN
+    IF TG_OP = 'UPDATE' AND OLD.id_responsavel IS DISTINCT FROM NEW.id_responsavel THEN
+        UPDATE pdca.usuario_ciclo
+        SET papel_ciclo = 'PARTICIPANTE'
+        WHERE id_ciclo = NEW.id 
+          AND id_usuario = OLD.id_responsavel 
+          AND papel_ciclo = 'RESPONSAVEL';
+    END IF;
 
     IF NEW.id_responsavel IS NOT NULL THEN
         INSERT INTO pdca.usuario_ciclo (id_usuario, id_ciclo, papel_ciclo)
         VALUES (NEW.id_responsavel, NEW.id, 'RESPONSAVEL')
-        ON CONFLICT (id_usuario, id_ciclo) DO NOTHING;
+        ON CONFLICT (id_usuario, id_ciclo) 
+        DO UPDATE SET papel_ciclo = 'RESPONSAVEL';
     END IF;
 
     RETURN NEW;
@@ -346,6 +321,8 @@ RETURNS BOOLEAN AS $$
 DECLARE
     ciclo BIGINT;
     pertence_ao_ciclo BOOLEAN;
+    plano_iniciado BOOLEAN;
+    responsavel_tarefa BOOLEAN;
     treinamento_pendente BOOLEAN;
     dependencia_pendente BOOLEAN;
 BEGIN
@@ -365,6 +342,25 @@ BEGIN
     ) INTO pertence_ao_ciclo;
 
     IF NOT pertence_ao_ciclo THEN
+        RETURN FALSE;
+    END IF;
+
+    -- Se o plano foi iniciado
+    SELECT EXISTS (
+        SELECT 1 FROM pdca.tarefa t
+        JOIN pdca.plano_acao pa ON pa.id = t.id_plano_acao WHERE t.id = tarefa_id AND pa.status = 'EM_EXECUCAO'
+    ) INTO plano_iniciado;
+
+    IF NOT plano_iniciado THEN
+        RETURN FALSE;
+    END IF;
+
+    -- Responsável da tarefa
+    SELECT EXISTS (
+        SELECT 1 FROM pdca.tarefa WHERE id = tarefa_id AND id_responsavel = usuario_id
+    ) INTO responsavel_tarefa;
+
+    IF NOT responsavel_tarefa THEN
         RETURN FALSE;
     END IF;
 
@@ -520,36 +516,15 @@ BEFORE UPDATE OF status ON pdca.tarefa
 FOR EACH ROW
 EXECUTE FUNCTION pdca.fn_sinc_data_tarefa_status();
 
--- 12 (trigger em loop que conecta a função fn_validar_principal() à tabela telefone_colaborador, email_colaborador, endereco_empresa, telefone_empresa e email_empresa)
-DO $$
-DECLARE
-    r RECORD;
-BEGIN
-    FOR r IN
-        SELECT table_schema, table_name
-        FROM information_schema.tables
-        WHERE table_schema IN ('public')
-          AND table_name IN ('telefone_colaborador', 'email_colaborador', 'endereco_empresa', 'telefone_empresa', 'email_empresa')
-    LOOP
-        EXECUTE format('
-            CREATE OR REPLACE TRIGGER tg_validar_principal
-            BEFORE INSERT OR UPDATE ON %I.%I
-            FOR EACH ROW
-            EXECUTE FUNCTION public.fn_validar_principal();',
-            r.table_schema, r.table_name
-        );
-    END LOOP;
-END $$;
-
--- 13 (trigger que conecta a função fn_validar_dependencia_tarefa() à tabela tarefa_dependencia)
+-- 12 (trigger que conecta a função fn_validar_dependencia_tarefa() à tabela tarefa_dependencia)
 CREATE OR REPLACE TRIGGER tg_validar_dependencia_tarefa
 BEFORE INSERT ON pdca.tarefa_dependencia
 FOR EACH ROW
 EXECUTE FUNCTION pdca.fn_validar_dependencia_tarefa();
 
--- 14 (trigger que conecta a função fn_vincular_responsavel_ciclo() à tabela ciclo)
+-- 13 (trigger que conecta a função fn_vincular_responsavel_ciclo() à tabela ciclo)
 CREATE OR REPLACE TRIGGER tg_vincular_responsavel_ciclo
-AFTER INSERT ON pdca.ciclo
+AFTER INSERT OR UPDATE ON pdca.ciclo
 FOR EACH ROW
 EXECUTE FUNCTION pdca.fn_vincular_responsavel_ciclo();
 
