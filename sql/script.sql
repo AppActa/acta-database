@@ -309,8 +309,8 @@ CREATE TABLE IF NOT EXISTS auditoria.catalogo_dados (
  
 CREATE TABLE IF NOT EXISTS auditoria.atv_usuario_dia (
     id BIGSERIAL PRIMARY KEY,
-    id_usuario BIGINT REFERENCES usuario_sistema(id) ON DELETE CASCADE,
-    data_atv DATE,
+    id_usuario BIGINT NOT NULL,
+    data_atv DATE DEFAULT CURRENT_DATE,
     hora_inicio TIMESTAMPTZ NOT NULL,
     hora_fim TIMESTAMPTZ NOT NULL,
     qnt_acoes INTEGER NOT NULL CHECK (qnt_acoes >= 0),
@@ -319,7 +319,7 @@ CREATE TABLE IF NOT EXISTS auditoria.atv_usuario_dia (
  
 CREATE TABLE IF NOT EXISTS auditoria.log_auditoria (
     id BIGSERIAL PRIMARY KEY,
-    id_usuario BIGINT REFERENCES usuario_sistema(id),
+    id_usuario BIGINT NOT NULL,
     id_registro BIGINT NOT NULL,
     tabela VARCHAR(100) NOT NULL,
     operacao VARCHAR(40) NOT NULL CHECK (operacao IN ('INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'READ', 'EXPORT')),
@@ -331,7 +331,7 @@ CREATE TABLE IF NOT EXISTS auditoria.log_auditoria (
  
 CREATE TABLE IF NOT EXISTS auditoria.log_status (
     id BIGSERIAL PRIMARY KEY,
-    id_usuario BIGINT NOT NULL REFERENCES usuario_sistema(id) ON DELETE CASCADE,
+    id_usuario BIGINT NOT NULL,
     id_registro BIGINT NOT NULL,
     tabela VARCHAR(100) NOT NULL,
     status_anterior VARCHAR(40) NOT NULL,
@@ -341,8 +341,8 @@ CREATE TABLE IF NOT EXISTS auditoria.log_status (
  
 CREATE TABLE IF NOT EXISTS auditoria.log_colaborador (
     id BIGSERIAL PRIMARY KEY,
-    id_colaborador BIGINT NOT NULL REFERENCES colaborador(id),
-    id_usuario BIGINT NOT NULL REFERENCES usuario_sistema(id),
+    id_colaborador BIGINT NOT NULL,
+    id_usuario BIGINT NOT NULL,
     operacao VARCHAR(40) NOT NULL CHECK (operacao IN ('INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'READ', 'EXPORT')),
     dados_antes JSONB NOT NULL,
     dados_depois JSONB NOT NULL,
@@ -352,16 +352,16 @@ CREATE TABLE IF NOT EXISTS auditoria.log_colaborador (
  
 CREATE TABLE IF NOT EXISTS auditoria.log_acesso_usuario (
     id BIGSERIAL PRIMARY KEY,
-    id_usuario BIGINT NOT NULL REFERENCES usuario_sistema(id) ON DELETE CASCADE,
-    id_ciclo BIGINT REFERENCES pdca.ciclo(id) ON DELETE CASCADE,
+    id_usuario BIGINT NOT NULL,
+    id_ciclo BIGINT,
     acao_realizada VARCHAR(60) NOT NULL,
     acessado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
  
 CREATE TABLE IF NOT EXISTS auditoria.log_tarefa (
     id BIGSERIAL PRIMARY KEY,
-    id_tarefa BIGINT NOT NULL REFERENCES pdca.tarefa(id),
-    id_usuario BIGINT NOT NULL REFERENCES usuario_sistema(id),
+    id_tarefa BIGINT NOT NULL,
+    id_usuario BIGINT NOT NULL,
     dados_antes JSONB NOT NULL,
     dados_depois JSONB NOT NULL,
     data_log TIMESTAMPTZ NOT NULL DEFAULT NOW(),

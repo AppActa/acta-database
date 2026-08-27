@@ -67,8 +67,12 @@ BEGIN
             usuario := NULL;
         END;
 
+        IF usuario IS NULL THEN
+            RAISE EXCEPTION 'Usuário não recebido pelo backend';
+        END IF;
+
         INSERT INTO auditoria.log_status (id_usuario, id_registro, tabela, status_anterior, status_atual, data_log) VALUES (
-        COALESCE(usuario, 1), NEW.id, TG_TABLE_NAME, OLD.status, NEW.status, NOW());
+        usuario, NEW.id, TG_TABLE_NAME, OLD.status, NEW.status, NOW());
     END IF;
 
     RETURN NEW;
@@ -88,19 +92,23 @@ BEGIN
         usuario := NULL;
     END;
 
+    IF usuario IS NULL THEN
+        RAISE EXCEPTION 'Usuário não recebido pelo backend';
+    END IF;
+
     IF TG_OP = 'INSERT' THEN
         INSERT INTO auditoria.log_auditoria (id_usuario, id_registro, tabela, operacao, dados_antes, dados_depois, data_log)
-        VALUES (COALESCE(usuario, 1), NEW.id, TG_TABLE_NAME, 'INSERT', '{}'::jsonb, to_jsonb(NEW));
+        VALUES (usuario, NEW.id, TG_TABLE_NAME, 'INSERT', '{}'::jsonb, to_jsonb(NEW));
         RETURN NEW;
 
     ELSIF TG_OP = 'UPDATE' THEN
         INSERT INTO auditoria.log_auditoria (id_usuario, id_registro, tabela, operacao, dados_antes, dados_depois, data_log)
-        VALUES (COALESCE(usuario, 1), NEW.id, TG_TABLE_NAME, 'UPDATE', to_jsonb(OLD), to_jsonb(NEW));
+        VALUES (usuario, NEW.id, TG_TABLE_NAME, 'UPDATE', to_jsonb(OLD), to_jsonb(NEW));
         RETURN NEW;
 
     ELSIF TG_OP = 'DELETE' THEN
         INSERT INTO auditoria.log_auditoria (id_usuario, id_registro, tabela, operacao, dados_antes, dados_depois, data_log)
-        VALUES (COALESCE(usuario, 1), OLD.id, TG_TABLE_NAME, 'DELETE', to_jsonb(OLD), '{}'::jsonb);
+        VALUES (usuario, OLD.id, TG_TABLE_NAME, 'DELETE', to_jsonb(OLD), '{}'::jsonb);
         RETURN OLD;
 
     END IF;
@@ -122,19 +130,23 @@ BEGIN
         usuario := NULL;
     END;
 
+    IF usuario IS NULL THEN
+        RAISE EXCEPTION 'Usuário não recebido pelo backend';
+    END IF;
+
     IF TG_OP = 'INSERT' THEN
         INSERT INTO auditoria.log_colaborador (id_colaborador, id_usuario, operacao, dados_antes, dados_depois, data_log) VALUES (
-        NEW.id, COALESCE(usuario, 1), 'INSERT', '{}'::jsonb, to_jsonb(NEW));
+        NEW.id, usuario, 'INSERT', '{}'::jsonb, to_jsonb(NEW));
         RETURN NEW;
 
     ELSIF TG_OP = 'UPDATE' THEN
         INSERT INTO auditoria.log_colaborador (id_colaborador, id_usuario, operacao, dados_antes, dados_depois, data_log) VALUES (
-        NEW.id, COALESCE(usuario, 1), 'UPDATE', to_jsonb(OLD), to_jsonb(NEW));
+        NEW.id, usuario, 'UPDATE', to_jsonb(OLD), to_jsonb(NEW));
         RETURN NEW;
 
     ELSIF TG_OP = 'DELETE' THEN
         INSERT INTO auditoria.log_colaborador (id_colaborador, id_usuario, operacao, dados_antes, dados_depois, data_log) VALUES (
-        OLD.id, COALESCE(usuario, 1), 'DELETE', to_jsonb(OLD), '{}'::jsonb);
+        OLD.id, usuario, 'DELETE', to_jsonb(OLD), '{}'::jsonb);
         RETURN OLD;
     END IF;
 
@@ -155,19 +167,23 @@ BEGIN
         usuario := NULL;
     END;
 
+    IF usuario IS NULL THEN
+        RAISE EXCEPTION 'Usuário não recebido pelo backend';
+    END IF;
+    
     IF TG_OP = 'INSERT' THEN
         INSERT INTO auditoria.log_tarefa (id_tarefa, id_usuario, operacao, dados_antes, dados_depois, data_log) VALUES (
-        NEW.id, COALESCE(usuario, 1),'INSERT', '{}'::jsonb, to_jsonb(NEW));
+        NEW.id, usuario,'INSERT', '{}'::jsonb, to_jsonb(NEW));
         RETURN NEW;
 
     ELSIF TG_OP = 'UPDATE' THEN
         INSERT INTO auditoria.log_tarefa (id_tarefa, id_usuario, operacao, dados_antes, dados_depois, data_log) VALUES (
-        NEW.id, COALESCE(usuario, 1), 'UPDATE', to_jsonb(OLD), to_jsonb(NEW));
+        NEW.id, usuario, 'UPDATE', to_jsonb(OLD), to_jsonb(NEW));
         RETURN NEW;
 
     ELSIF TG_OP = 'DELETE' THEN
         INSERT INTO auditoria.log_tarefa (id_tarefa, id_usuario, operacao, dados_antes, dados_depois, data_log) VALUES (
-        OLD.id, COALESCE(usuario, 1), 'DELETE', to_jsonb(OLD),'{}'::jsonb);
+        OLD.id, usuario, 'DELETE', to_jsonb(OLD),'{}'::jsonb);
         RETURN OLD;
     END IF;
 
@@ -193,7 +209,7 @@ BEGIN
 
     UPDATE pdca.problema SET peso = media, atualizado_em = NOW() WHERE id = problema;
 
-    RETURN NEW;
+    RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -219,12 +235,12 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION pdca.fn_validar_dependencia_tarefa()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.id_tarefa = NEW.id_tarefa_dependente THEN
+    IF NEW.id_tarefa = NEW.id_tarefa_dependencia THEN
         RAISE EXCEPTION 'Uma tarefa não pode depender de si mesma.';
     END IF;
 
-    IF EXISTS (SELECT 1 FROM pdca.tarefa_dependencia WHERE id_tarefa = NEW.id_tarefa_dependente AND id_tarefa_dependente = NEW.id_tarefa) 
-        THEN RAISE EXCEPTION 'A tarefa % não pode depender da tarefa %, pois a dependência inversa já existe.', NEW.id_tarefa, NEW.id_tarefa_dependente;
+    IF EXISTS (SELECT 1 FROM pdca.tarefa_dependencia WHERE id_tarefa = NEW.id_tarefa_dependencia AND id_tarefa_dependencia = NEW.id_tarefa) 
+        THEN RAISE EXCEPTION 'A tarefa % não pode depender da tarefa %, pois a dependência inversa já existe.', NEW.id_tarefa, NEW.id_tarefa_dependencia;
     END IF;
 
     RETURN NEW;
@@ -236,51 +252,18 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION pdca.fn_sinc_data_tarefa_status()
 RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.status = 'EM_ANDAMENTO' THEN
-        NEW.data_inicio = NOW();
+    IF NEW.status IS DISTINCT FROM OLD.status THEN
 
-    ELSIF NEW.status = 'CONCLUIDA' THEN
-        NEW.data_fim = NOW();
+        IF NEW.status = 'EM_ANDAMENTO' THEN
+            IF NEW.data_inicio_real IS NULL THEN
+                NEW.data_inicio_real := NOW();
+            END IF;
 
-    ELSIF NEW.status = 'CANCELADA' THEN
-        NEW.data_fim = NOW();
-    END IF;
+            NEW.data_fim_real := NULL;
 
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- 11 (não deixa ter mais de um principal por telefone/email/endereco)
-CREATE OR REPLACE FUNCTION public.fn_validar_principal()
-RETURNS TRIGGER AS $$
-DECLARE
-    qtd_principal INTEGER := 0;
-BEGIN       
-    IF NEW.principal THEN
-
-        IF TG_TABLE_NAME = 'telefone_colaborador' THEN
-            SELECT COUNT(*) INTO qtd_principal FROM public.telefone_colaborador WHERE id_colaborador = NEW.id_colaborador 
-            AND principal = TRUE AND id IS DISTINCT FROM NEW.id;
-            
-        ELSIF TG_TABLE_NAME = 'email_colaborador' THEN
-            SELECT COUNT(*) INTO qtd_principal FROM public.email_colaborador WHERE id_colaborador = NEW.id_colaborador 
-            AND principal = TRUE AND id IS DISTINCT FROM NEW.id;
-            
-        ELSIF TG_TABLE_NAME = 'endereco_empresa' THEN
-            SELECT COUNT(*) INTO qtd_principal FROM public.endereco_empresa WHERE id_empresa = NEW.id_empresa 
-            AND principal = TRUE AND id IS DISTINCT FROM NEW.id;
-            
-        ELSIF TG_TABLE_NAME = 'telefone_empresa' THEN
-            SELECT COUNT(*) INTO qtd_principal FROM public.telefone_empresa WHERE id_empresa = NEW.id_empresa 
-            AND principal = TRUE AND id IS DISTINCT FROM NEW.id;
-            
-        ELSIF TG_TABLE_NAME = 'email_empresa' THEN
-            SELECT COUNT(*) INTO qtd_principal FROM public.email_empresa WHERE id_empresa = NEW.id_empresa 
-            AND principal = TRUE AND id IS DISTINCT FROM NEW.id;
-        END IF;
-
-        IF qtd_principal > 0 THEN
-            RAISE EXCEPTION 'Já existe um registro principal cadastrado.';
+        ELSIF NEW.status IN ('CONCLUIDA', 'CANCELADA') THEN
+            NEW.data_fim_real := NOW();
+        
         END IF;
 
     END IF;
@@ -289,23 +272,123 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 12 (calcula o avanço do ciclo em percentual)
-CREATE OR REPLACE FUNCTION pdca.fn_avanco_ciclo(id_ciclo BIGINT)
+-- 11 (calcula o avanço do ciclo em percentual)
+CREATE OR REPLACE FUNCTION pdca.fn_avanco_ciclo(p_id_ciclo BIGINT)
 RETURNS NUMERIC AS $$
 DECLARE
-    total_tarefas INTEGER;
-    tarefas_concluidas INTEGER;
+    total_tarefas INTEGER := 0;
+    tarefas_concluidas INTEGER := 0;
 BEGIN
-    SELECT COUNT(*) FROM pdca.tarefa WHERE id_ciclo = id_ciclo AND status IN ('CONCLUIDA', 'CANCELADA') INTO tarefas_concluidas;
-    SELECT COUNT(*) FROM pdca.tarefa WHERE id_ciclo = id_ciclo INTO total_tarefas;
+    SELECT COUNT(*), COUNT(*) FILTER (WHERE t.status IN ('CONCLUIDA', 'CANCELADA'))
+    INTO total_tarefas, tarefas_concluidas FROM pdca.tarefa t
+    JOIN pdca.plano_acao pa ON pa.id = t.id_plano_acao
+    WHERE pa.id_ciclo = p_id_ciclo;
 
     IF total_tarefas > 0 THEN
-        RETURN (tarefas_concluidas::NUMERIC / total_tarefas::NUMERIC) * 100;
+        RETURN ROUND((tarefas_concluidas::NUMERIC / total_tarefas::NUMERIC) * 100, 2);
     ELSE
         RETURN 0;
     END IF;
 END;
-$$;
+$$ LANGUAGE plpgsql;
+
+-- 12 (adiciona na tabela de relação usuario_ciclo o responsável por aquele ciclo)
+CREATE OR REPLACE FUNCTION pdca.fn_vincular_responsavel_ciclo()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'UPDATE' AND OLD.id_responsavel IS DISTINCT FROM NEW.id_responsavel THEN
+        UPDATE pdca.usuario_ciclo
+        SET papel_ciclo = 'PARTICIPANTE'
+        WHERE id_ciclo = NEW.id 
+          AND id_usuario = OLD.id_responsavel 
+          AND papel_ciclo = 'RESPONSAVEL';
+    END IF;
+
+    IF NEW.id_responsavel IS NOT NULL THEN
+        INSERT INTO pdca.usuario_ciclo (id_usuario, id_ciclo, papel_ciclo)
+        VALUES (NEW.id_responsavel, NEW.id, 'RESPONSAVEL')
+        ON CONFLICT (id_usuario, id_ciclo) 
+        DO UPDATE SET papel_ciclo = 'RESPONSAVEL';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 14 (etapas de verificação antes de uma trefa ser iniciada)
+CREATE OR REPLACE FUNCTION pdca.fn_pode_iniciar_tarefa(tarefa_id BIGINT, usuario_id BIGINT)
+RETURNS BOOLEAN AS $$
+DECLARE
+    ciclo BIGINT;
+    pertence_ao_ciclo BOOLEAN;
+    plano_iniciado BOOLEAN;
+    responsavel_tarefa BOOLEAN;
+    treinamento_pendente BOOLEAN;
+    dependencia_pendente BOOLEAN;
+BEGIN
+
+    -- Ciclo
+    SELECT pa.id_ciclo INTO ciclo FROM pdca.tarefa t
+    JOIN pdca.plano_acao pa ON pa.id = t.id_plano_acao
+    WHERE t.id = tarefa_id;
+
+    IF ciclo IS NULL THEN
+        RETURN FALSE;
+    END IF;
+
+    -- O usuário está no ciclo
+    SELECT EXISTS (
+        SELECT 1 FROM pdca.usuario_ciclo WHERE id_ciclo = ciclo AND id_usuario = usuario_id
+    ) INTO pertence_ao_ciclo;
+
+    IF NOT pertence_ao_ciclo THEN
+        RETURN FALSE;
+    END IF;
+
+    -- Se o plano foi iniciado
+    SELECT EXISTS (
+        SELECT 1 FROM pdca.tarefa t
+        JOIN pdca.plano_acao pa ON pa.id = t.id_plano_acao WHERE t.id = tarefa_id AND pa.status = 'EM_EXECUCAO'
+    ) INTO plano_iniciado;
+
+    IF NOT plano_iniciado THEN
+        RETURN FALSE;
+    END IF;
+
+    -- Responsável da tarefa
+    SELECT EXISTS (
+        SELECT 1 FROM pdca.tarefa WHERE id = tarefa_id AND id_responsavel = usuario_id
+    ) INTO responsavel_tarefa;
+
+    IF NOT responsavel_tarefa THEN
+        RETURN FALSE;
+    END IF;
+
+    -- Treinamento OBRIGATÓRIO não concluído
+    SELECT EXISTS (
+        SELECT 1 FROM pdca.treinamento tr
+        LEFT JOIN pdca.usuario_treinamento ut ON ut.id_treinamento = tr.id AND ut.id_usuario = usuario_id
+        WHERE tr.id_ciclo = ciclo AND tr.obrigatorio = TRUE AND (ut.status IS NULL OR ut.status <> 'CONCLUIDO')
+    ) INTO treinamento_pendente;
+
+    IF treinamento_pendente THEN
+        RETURN FALSE;
+    END IF;
+
+    -- Dependência da tarefa
+    SELECT EXISTS (
+        SELECT 1 FROM pdca.tarefa_dependencia dep
+        JOIN pdca.tarefa t ON t.id = dep.id_tarefa_dependencia
+        WHERE dep.id_tarefa = tarefa_id AND t.status <> 'CONCLUIDA'
+    ) INTO dependencia_pendente;
+
+    IF dependencia_pendente THEN
+        RETURN FALSE;
+    END IF;
+
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
 
 --  ######################
 --  TRIGGERS
@@ -433,32 +516,17 @@ BEFORE UPDATE OF status ON pdca.tarefa
 FOR EACH ROW
 EXECUTE FUNCTION pdca.fn_sinc_data_tarefa_status();
 
--- 12 (trigger em loop que conecta a função fn_validar_principal() à tabela telefone_colaborador, email_colaborador, endereco_empresa, telefone_empresa e email_empresa)
-DO $$
-DECLARE
-    r RECORD;
-BEGIN
-    FOR r IN
-        SELECT table_schema, table_name
-        FROM information_schema.tables
-        WHERE table_schema IN ('public')
-          AND table_name IN ('telefone_colaborador', 'email_colaborador', 'endereco_empresa', 'telefone_empresa', 'email_empresa')
-    LOOP
-        EXECUTE format('
-            CREATE OR REPLACE TRIGGER tg_validar_principal
-            BEFORE INSERT OR UPDATE ON %I.%I
-            FOR EACH ROW
-            EXECUTE FUNCTION public.fn_validar_principal();',
-            r.table_schema, r.table_name
-        );
-    END LOOP;
-END $$;
-
--- 13 (trigger que conecta a função fn_validar_dependencia_tarefa() à tabela tarefa_dependencia)
+-- 12 (trigger que conecta a função fn_validar_dependencia_tarefa() à tabela tarefa_dependencia)
 CREATE OR REPLACE TRIGGER tg_validar_dependencia_tarefa
 BEFORE INSERT ON pdca.tarefa_dependencia
 FOR EACH ROW
 EXECUTE FUNCTION pdca.fn_validar_dependencia_tarefa();
+
+-- 13 (trigger que conecta a função fn_vincular_responsavel_ciclo() à tabela ciclo)
+CREATE OR REPLACE TRIGGER tg_vincular_responsavel_ciclo
+AFTER INSERT OR UPDATE ON pdca.ciclo
+FOR EACH ROW
+EXECUTE FUNCTION pdca.fn_vincular_responsavel_ciclo();
 
 --  ######################
 --  PROCEDURES
@@ -495,6 +563,47 @@ LANGUAGE plpgsql AS $$
 BEGIN
     INSERT INTO auditoria.atv_usuario_dia (id_usuario, data_atv, hora_inicio, hora_fim, qnt_acoes)
     VALUES (usuario, CURRENT_DATE, hora_inicio, NOW(), num_acoes);
+END;
+$$;
+
+-- 4 (etapas de verificação antes de encerrar um ciclo)
+CREATE OR REPLACE PROCEDURE pdca.pr_encerrar_ciclo(ciclo_id BIGINT)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    status_ciclo VARCHAR(40);
+    planos_pendentes INTEGER := 0;
+    tarefas_pendentes INTEGER := 0;
+BEGIN
+
+    SELECT status INTO status_ciclo FROM pdca.ciclo WHERE id = ciclo_id;
+
+    IF status_ciclo IS NULL THEN
+        RAISE EXCEPTION 'Ciclo não encontrado.';
+    END IF;
+
+    IF status_ciclo IN ('CONCLUIDO', 'CANCELADO') THEN
+        RAISE EXCEPTION 'O ciclo já está encerrado ou cancelado.';
+    END IF;
+
+    -- planos_pendentes
+    SELECT COUNT(*) INTO planos_pendentes FROM pdca.plano_acao
+    WHERE id_ciclo = ciclo_id AND status NOT IN ('CONCLUIDO', 'CANCELADO');
+
+    IF planos_pendentes > 0 THEN
+        RAISE EXCEPTION 'Não é possível encerrar o ciclo. Existem % plano(s) de ação não finalizados.', planos_pendentes;
+    END IF;
+
+    -- tarefas_pendentes
+    SELECT COUNT(*) INTO tarefas_pendentes FROM pdca.tarefa t
+    JOIN pdca.plano_acao pa ON pa.id = t.id_plano_acao
+    WHERE pa.id_ciclo = ciclo_id AND t.status NOT IN ('CONCLUIDA', 'CANCELADA');
+
+    IF tarefas_pendentes > 0 THEN
+        RAISE EXCEPTION 'Não é possível encerrar o ciclo. Existem % tarefa(s) pendente(s).', tarefas_pendentes;
+    END IF;
+
+    UPDATE pdca.ciclo SET status = 'CONCLUIDO', data_fim_real = CURRENT_DATE, atualizado_em = NOW() WHERE id = ciclo_id;
 END;
 $$;
 
