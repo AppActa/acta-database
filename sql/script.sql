@@ -20,12 +20,29 @@ CREATE TABLE IF NOT EXISTS usuario_sistema (
     id_empresa BIGINT NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
     nome VARCHAR(160) NOT NULL,
     email_login VARCHAR(254) NOT NULL UNIQUE CHECK (email_login ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'),
-    senha_hash VARCHAR(255) NOT NULL,
+    firebase_uid VARCHAR(128) UNIQUE,
     tipo_usuario VARCHAR(40) NOT NULL CHECK (tipo_usuario IN ('ADMIN', 'GESTOR', 'COLABORADOR')),
     status VARCHAR(40) NOT NULL CHECK (status IN ('ATIVO', 'INATIVO', 'PENDENTE', 'BLOQUEADO', 'ARQUIVADO')),
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     atualizado_em TIMESTAMPTZ
+
+    CONSTRAINT ck_firebase_uid CHECK (status <> 'ATIVO' or firebase_uid IS NOT NULL)
 );
+
+CREATE TABLE IF NOT EXISTS convite_usuario (
+    id BIGSERIAL PRIMARY KEY,
+    id_usuario BIGINT NOT NULL REFERENCES usuario_sistema(id) ON DELETE CASCADE,
+    email_destino VARCHAR(254) NOT NULL CHECK (email_login ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'),
+    token_hash VARCHAR(255) NOT NULL UNIQUE,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('PENDENTE', 'USADO', 'REVOGADO', 'EXPIRADO')),
+    expira_em TIMESTAMPTZ NOT NULL,
+    usado_em TIMESTAMPTZ,
+    criado_por BIGINT NOT NULL REFERENCES usuario_sistema(id) ON DELETE RESTRICT,
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT ck_data_expiracao CHECK (expira_em > criado_em)
+    CONSTRAINT ck_convite_uso CHECK ((status = 'USADO' AND usado_em IS NOT NULL) OR (status <> 'USADO' AND usado_em IS NULL))
+)
  
 CREATE TABLE IF NOT EXISTS colaborador (
     id BIGSERIAL PRIMARY KEY,
@@ -375,75 +392,41 @@ CREATE TABLE IF NOT EXISTS auditoria.log_tarefa (
 
 CREATE TABLE IF NOT EXISTS pdca.anexo (
     id BIGSERIAL PRIMARY KEY,
-
-    id_empresa BIGINT NOT NULL,
-    id_ciclo BIGINT NOT NULL,
-
-    criado_por BIGINT
-        REFERENCES public.usuario_sistema(id)
-        ON DELETE SET NULL,
-
-    categoria VARCHAR(40) NOT NULL CHECK (
-        categoria IN (
-            'TREINAMENTO',
-            'PLANO_ACAO',
-            'CAUSA_RAIZ',
-            'PROBLEMA',
-            'META',
-            'RELATORIO',
-            'LICAO_APRENDIDA',
-            'FORMULARIO',
-            'EVIDENCIA',
-            'OUTRO'
-        )
-    ),
+    id_empresa BIGINT NOT NULL REFERENCES public.empresa(id) ON DELETE RESTRICT,
+    id_ciclo BIGINT NOT NULL REFERENCES pdca.ciclo(id) ON DELETE RESTRICT,
+    criado_por BIGINT REFERENCES public.usuario_sistema(id) ON DELETE SET NULL,
 
     -- ID do registro relacionado à categoria.
     -- Exemplo: categoria = 'PLANO_ACAO', id_origem = id do plano.
     id_origem BIGINT,
-
     nome_arquivo VARCHAR(255) NOT NULL,
-
     tipo_arquivo VARCHAR(150) NOT NULL,
-
-    tamanho_arquivo BIGINT NOT NULL
-        CHECK (tamanho_arquivo > 0),
-
-    bucket_arquivo VARCHAR(100) NOT NULL
-        DEFAULT 'acta-arquivos',
-
+    tamanho_arquivo BIGINT NOT NULL CHECK (tamanho_arquivo > 0),
+    bucket_arquivo VARCHAR(100) NOT NULL DEFAULT 'acta-arquivos',
     caminho_arquivo TEXT NOT NULL,
-
-    status VARCHAR(30) NOT NULL
-        DEFAULT 'PROCESSANDO'
-        CHECK (
-            status IN (
-                'PROCESSANDO',
-                'ATIVO',
-                'ERRO',
-                'EXCLUIDO'
-            )
-        ),
-
+    status VARCHAR(30) NOT NULL DEFAULT 'PROCESSANDO' CHECK (status IN ('PROCESSANDO', 'ATIVO', 'ERRO', 'EXCLUIDO')),
     descricao TEXT,
-
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    atualizado_em TIMESTAMPTZ,
     excluido_em TIMESTAMPTZ,
 
-    CONSTRAINT fk_anexo_empresa
-        FOREIGN KEY (id_empresa)
-        REFERENCES public.empresa(id)
-        ON DELETE RESTRICT,
-
-    CONSTRAINT fk_anexo_ciclo
-        FOREIGN KEY (id_ciclo)
-        REFERENCES pdca.ciclo(id)
-        ON DELETE RESTRICT,
-
-    CONSTRAINT uq_anexo_storage
-        UNIQUE (bucket_arquivo, caminho_arquivo),
-
+    categoria VARCHAR(40) NOT NULL CHECK (
+            categoria IN (
+                'TREINAMENTO',
+                'PLANO_ACAO',
+                'CAUSA_RAIZ',
+                'PROBLEMA',
+                'META',
+                'RELATORIO',
+                'LICAO_APRENDIDA',
+                'FORMULARIO',
+                'EVIDENCIA',
+                'OUTRO'
+            )
+        ),
+    CONSTRAINT uq_anexo_storage UNIQUE (bucket_arquivo, caminho_arquivo),
+    CONSTRAINT ck_anexo_exclusao CHECK ((status = 'EXCLUIDO' AND excluido_em IS NOT NULL) OR (status <> 'EXCLUIDO' AND excluido_em IS NULL)),
+    CONSTRAINT ck_anexo_origem CHECK (categoria = 'OUTRO' OR id_origem IS NOT NULL)
     CONSTRAINT ck_anexo_tipo_arquivo
         CHECK (
             tipo_arquivo IN (
@@ -456,17 +439,4 @@ CREATE TABLE IF NOT EXISTS pdca.anexo (
             )
             OR tipo_arquivo LIKE 'image/%'
         ),
-
-    CONSTRAINT ck_anexo_exclusao
-        CHECK (
-            (status = 'EXCLUIDO' AND excluido_em IS NOT NULL)
-            OR
-            (status <> 'EXCLUIDO' AND excluido_em IS NULL)
-        ),
-
-    CONSTRAINT ck_anexo_origem
-        CHECK (
-            categoria = 'OUTRO'
-            OR id_origem IS NOT NULL
-        )
 );
