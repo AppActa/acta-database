@@ -15,11 +15,22 @@ COMMENT ON COLUMN public.usuario_sistema.id IS 'Identificador unico do usuario.'
 COMMENT ON COLUMN public.usuario_sistema.id_empresa IS 'Empresa a qual o usuario pertence.';
 COMMENT ON COLUMN public.usuario_sistema.nome IS 'Nome do usuario.';
 COMMENT ON COLUMN public.usuario_sistema.email_login IS 'E-mail utilizado para login no sistema.';
-COMMENT ON COLUMN public.usuario_sistema.senha_hash IS 'Hash da senha do usuario.';
+COMMENT ON COLUMN public.usuario_sistema.firebase_uid IS 'Identificador unico do usuario no Firebase Authentication.';
 COMMENT ON COLUMN public.usuario_sistema.tipo_usuario IS 'Perfil de acesso do usuario: ADMIN, GESTOR ou COLABORADOR.';
 COMMENT ON COLUMN public.usuario_sistema.status IS 'Situacao do usuario no sistema.';
 COMMENT ON COLUMN public.usuario_sistema.criado_em IS 'Data e hora de criacao do registro.';
 COMMENT ON COLUMN public.usuario_sistema.atualizado_em IS 'Data e hora da ultima atualizacao do registro.';
+
+COMMENT ON TABLE public.convite_usuario IS 'Convites enviados para usuarios da plataforma.';
+COMMENT ON COLUMN public.convite_usuario.id IS 'Identificador unico do convite.';
+COMMENT ON COLUMN public.convite_usuario.id_usuario IS 'Usuario convidado.';
+COMMENT ON COLUMN public.convite_usuario.email_destino IS 'Endereco de e-mail para o qual o convite foi enviado.';
+COMMENT ON COLUMN public.convite_usuario.token_hash IS 'Hash unico do token utilizado para validar o convite.';
+COMMENT ON COLUMN public.convite_usuario.status IS 'Situacao do convite: PENDENTE, USADO, REVOGADO ou EXPIRADO.';
+COMMENT ON COLUMN public.convite_usuario.expira_em IS 'Data e hora de expiracao do convite.';
+COMMENT ON COLUMN public.convite_usuario.usado_em IS 'Data e hora de utilizacao do convite, quando utilizado.';
+COMMENT ON COLUMN public.convite_usuario.criado_por IS 'Usuario que criou o convite.';
+COMMENT ON COLUMN public.convite_usuario.criado_em IS 'Data e hora de criacao do convite.';
 
 COMMENT ON TABLE public.colaborador IS 'Colaboradores vinculados a uma empresa e a um usuario do sistema.';
 COMMENT ON COLUMN public.colaborador.id IS 'Identificador unico do colaborador.';
