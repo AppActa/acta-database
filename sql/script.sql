@@ -1,4 +1,8 @@
 -- Criando schemas
+DROP SCHEMA public CASCADE;
+DROP SCHEMA pdca CASCADE;
+DROP SCHEMA auditoria CASCADE;
+
 CREATE SCHEMA IF NOT EXISTS public;
 CREATE SCHEMA IF NOT EXISTS pdca;
 CREATE SCHEMA IF NOT EXISTS auditoria;
@@ -32,7 +36,7 @@ CREATE TABLE IF NOT EXISTS usuario_sistema (
 CREATE TABLE IF NOT EXISTS convite_usuario (
     id BIGSERIAL PRIMARY KEY,
     id_usuario BIGINT NOT NULL REFERENCES usuario_sistema(id) ON DELETE CASCADE,
-    email_destino VARCHAR(254) NOT NULL CHECK (email_login ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'),
+    email_destino VARCHAR(254) NOT NULL CHECK (email_destino ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'),
     token_hash VARCHAR(255) NOT NULL UNIQUE,
     status VARCHAR(20) NOT NULL CHECK (status IN ('PENDENTE', 'USADO', 'REVOGADO', 'EXPIRADO')),
     expira_em TIMESTAMPTZ NOT NULL,
@@ -40,9 +44,9 @@ CREATE TABLE IF NOT EXISTS convite_usuario (
     criado_por BIGINT NOT NULL REFERENCES usuario_sistema(id) ON DELETE RESTRICT,
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT ck_data_expiracao CHECK (expira_em > criado_em)
+    CONSTRAINT ck_data_expiracao CHECK (expira_em > criado_em),
     CONSTRAINT ck_convite_uso CHECK ((status = 'USADO' AND usado_em IS NOT NULL) OR (status <> 'USADO' AND usado_em IS NULL))
-)
+);
  
 CREATE TABLE IF NOT EXISTS colaborador (
     id BIGSERIAL PRIMARY KEY,
@@ -426,7 +430,7 @@ CREATE TABLE IF NOT EXISTS pdca.anexo (
         ),
     CONSTRAINT uq_anexo_storage UNIQUE (bucket_arquivo, caminho_arquivo),
     CONSTRAINT ck_anexo_exclusao CHECK ((status = 'EXCLUIDO' AND excluido_em IS NOT NULL) OR (status <> 'EXCLUIDO' AND excluido_em IS NULL)),
-    CONSTRAINT ck_anexo_origem CHECK (categoria = 'OUTRO' OR id_origem IS NOT NULL)
+    CONSTRAINT ck_anexo_origem CHECK (categoria = 'OUTRO' OR id_origem IS NOT NULL),
     CONSTRAINT ck_anexo_tipo_arquivo
         CHECK (
             tipo_arquivo IN (
@@ -438,5 +442,5 @@ CREATE TABLE IF NOT EXISTS pdca.anexo (
                 'text/plain'
             )
             OR tipo_arquivo LIKE 'image/%'
-        ),
+        )
 );
