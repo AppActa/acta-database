@@ -26,41 +26,6 @@ Essas são as CTEs que pensamos e que fazem sentido considerando o nosso script.
 
 4. Ciclos nas tarefas
  - Basicamente, se resume em: "Existe uma tarefa A que depende da tarefa B que depende da C. Mas a C depende da A" -> procura por ciclos assim.
- 
-
-
-Detalhe que yo encontré enquanto observava el script.sql:
-Un problema permite ser padre de un problema de outro ciclo.
-entao, pode ser que tenha um problema pai do ciclo x que tem um problema filho no ciclo Y.
-Como resolver: Talvez uma FK composta, com ID e_problmema_pai e id_ciclo
-
-parte em que isso aparece:
-
-CREATE TABLE IF NOT EXISTS pdca.problema (
-    id BIGSERIAL PRIMARY KEY,
-    id_ciclo BIGINT NOT NULL REFERENCES pdca.ciclo(id) ON DELETE CASCADE,
-    id_problema_pai BIGINT REFERENCES pdca.problema(id) ON DELETE CASCADE, --> aqui, ele so garante que existe, mas nn verifica se ele é do mesmo ciclo... 
-    criado_por BIGINT NOT NULL REFERENCES usuario_sistema(id),
-    titulo VARCHAR(160) NOT NULL,
-    descricao TEXT NOT NULL,
-    peso NUMERIC(3,2) NOT NULL CHECK (peso BETWEEN 0 AND 1),
-    status VARCHAR(40) NOT NULL CHECK (status IN ('ABERTO', 'EM_ANALISE', 'PRIORIZADO', 'RESOLVIDO', 'DESCARTADO')),
-    origem VARCHAR(40) NOT NULL CHECK (origem IN ('MANUAL', 'IA', 'FORMULARIO', 'IMPORTACAO', 'SISTEMA')),
-    persistente BOOLEAN NOT NULL DEFAULT FALSE,
-    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    atualizado_em TIMESTAMPTZ
-);
-
-possivel resolucao:
-ALTER TABLE pdca.problema
-ADD CONSTRAINT problema_id_ciclo_unique   -> pra  garantir que nn tenha um par igual a esse ja
-UNIQUE (id, id_ciclo);
-
-ALTER TABLE pdca.problema
-ADD CONSTRAINT problema_pai_mesmo_ciclo_fk
-FOREIGN KEY (id_problema_pai, id_ciclo)  -> cria a FK 
-REFERENCES pdca.problema (id, id_ciclo);
-
 */
 
 -- 1. Árvore de problemas
