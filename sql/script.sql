@@ -1,8 +1,12 @@
 -- Criando schemas
+DROP SCHEMA IF EXISTS public CASCADE;
+DROP SCHEMA IF EXISTS pdca CASCADE;
+DROP SCHEMA IF EXISTS auditoria CASCADE;
+
 CREATE SCHEMA IF NOT EXISTS public;
 CREATE SCHEMA IF NOT EXISTS pdca;
 CREATE SCHEMA IF NOT EXISTS auditoria;
- 
+
 -- Schema Public
 CREATE TABLE IF NOT EXISTS empresa (
     id BIGSERIAL PRIMARY KEY,
@@ -14,7 +18,7 @@ CREATE TABLE IF NOT EXISTS empresa (
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     atualizado_em TIMESTAMPTZ
 );
- 
+
 CREATE TABLE IF NOT EXISTS usuario_sistema (
     id BIGSERIAL PRIMARY KEY,
     id_empresa BIGINT NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
@@ -32,7 +36,7 @@ CREATE TABLE IF NOT EXISTS usuario_sistema (
 CREATE TABLE IF NOT EXISTS convite_usuario (
     id BIGSERIAL PRIMARY KEY,
     id_usuario BIGINT NOT NULL REFERENCES usuario_sistema(id) ON DELETE CASCADE,
-    email_destino VARCHAR(254) NOT NULL CHECK (email_login ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'),
+    email_destino VARCHAR(254) NOT NULL CHECK (email_destino ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'),
     token_hash VARCHAR(255) NOT NULL UNIQUE,
     status VARCHAR(20) NOT NULL CHECK (status IN ('PENDENTE', 'USADO', 'REVOGADO', 'EXPIRADO')),
     expira_em TIMESTAMPTZ NOT NULL,
@@ -60,7 +64,7 @@ CREATE TABLE IF NOT EXISTS colaborador (
     atualizado_em TIMESTAMPTZ,
     CONSTRAINT colaborador_datas_check CHECK (data_contratacao >= data_nascimento)
 );
- 
+
 CREATE TABLE IF NOT EXISTS endereco_empresa (
     id BIGSERIAL PRIMARY KEY,
     id_empresa BIGINT NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
@@ -75,7 +79,7 @@ CREATE TABLE IF NOT EXISTS endereco_empresa (
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     atualizado_em TIMESTAMPTZ
 );
- 
+
 CREATE TABLE IF NOT EXISTS email_empresa (
     id BIGSERIAL PRIMARY KEY,
     id_empresa BIGINT NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
@@ -84,7 +88,7 @@ CREATE TABLE IF NOT EXISTS email_empresa (
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT email_empresa_unique_0 UNIQUE (id_empresa, email)
 );
- 
+
 CREATE TABLE IF NOT EXISTS telefone_empresa (
     id BIGSERIAL PRIMARY KEY,
     id_empresa BIGINT NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
@@ -93,7 +97,7 @@ CREATE TABLE IF NOT EXISTS telefone_empresa (
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT telefone_empresa_unique_0 UNIQUE (id_empresa, numero_telefone)
 );
- 
+
 CREATE TABLE IF NOT EXISTS email_colaborador (
     id BIGSERIAL PRIMARY KEY,
     id_colaborador BIGINT NOT NULL REFERENCES colaborador(id) ON DELETE CASCADE,
@@ -102,7 +106,7 @@ CREATE TABLE IF NOT EXISTS email_colaborador (
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT email_colaborador_unique_0 UNIQUE (id_colaborador, email)
 );
- 
+
 CREATE TABLE IF NOT EXISTS telefone_colaborador (
     id BIGSERIAL PRIMARY KEY,
     id_colaborador BIGINT NOT NULL REFERENCES colaborador(id) ON DELETE CASCADE,
@@ -111,7 +115,7 @@ CREATE TABLE IF NOT EXISTS telefone_colaborador (
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT telefone_colaborador_unique_0 UNIQUE (id_colaborador, numero_telefone)
 );
- 
+
 -- Schema PDCA
 CREATE TABLE IF NOT EXISTS pdca.ciclo (
     id BIGSERIAL PRIMARY KEY,
@@ -141,7 +145,7 @@ CREATE TABLE IF NOT EXISTS pdca.plano_acao (
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     atualizado_em TIMESTAMPTZ
 );
- 
+
 CREATE TABLE IF NOT EXISTS pdca.meta (
     id BIGSERIAL PRIMARY KEY,
     id_ciclo BIGINT NOT NULL REFERENCES pdca.ciclo(id) ON DELETE CASCADE,
@@ -158,8 +162,8 @@ CREATE TABLE IF NOT EXISTS pdca.meta (
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     atualizado_em TIMESTAMPTZ
 );
- 
- 
+
+
 CREATE TABLE IF NOT EXISTS pdca.treinamento (
     id BIGSERIAL PRIMARY KEY,
     id_ciclo BIGINT NOT NULL REFERENCES pdca.ciclo(id) ON DELETE CASCADE,
@@ -171,7 +175,7 @@ CREATE TABLE IF NOT EXISTS pdca.treinamento (
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     atualizado_em TIMESTAMPTZ
 );
- 
+
 CREATE TABLE IF NOT EXISTS pdca.verificacao_resultado (
     id BIGSERIAL PRIMARY KEY,
     id_ciclo BIGINT NOT NULL REFERENCES pdca.ciclo(id) ON DELETE CASCADE,
@@ -196,7 +200,7 @@ CREATE TABLE IF NOT EXISTS pdca.problema (
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     atualizado_em TIMESTAMPTZ
 );
- 
+
 CREATE TABLE IF NOT EXISTS pdca.causa_raiz (
     id BIGSERIAL PRIMARY KEY,
     id_ciclo BIGINT NOT NULL REFERENCES pdca.ciclo(id) ON DELETE CASCADE,
@@ -212,13 +216,13 @@ CREATE TABLE IF NOT EXISTS pdca.causa_raiz (
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     atualizado_em TIMESTAMPTZ
 );
- 
+
 CREATE TABLE IF NOT EXISTS pdca.meta_responsavel (
     id_meta BIGINT NOT NULL REFERENCES pdca.meta(id) ON DELETE CASCADE,
     id_usuario BIGINT NOT NULL REFERENCES usuario_sistema(id) ON DELETE CASCADE,
     PRIMARY KEY (id_meta, id_usuario)
 );
- 
+
 CREATE TABLE IF NOT EXISTS pdca.plano_5w2h (
     id BIGSERIAL PRIMARY KEY,
     id_plano_acao BIGINT NOT NULL UNIQUE REFERENCES pdca.plano_acao(id) ON DELETE CASCADE,
@@ -234,7 +238,7 @@ CREATE TABLE IF NOT EXISTS pdca.plano_5w2h (
     atualizado_em TIMESTAMPTZ,
     CONSTRAINT plano_5w2h_datas_check CHECK (when_inicio IS NULL OR when_fim >= when_inicio)
 );
- 
+
 CREATE TABLE IF NOT EXISTS pdca.efeito_secundario (
     id BIGSERIAL PRIMARY KEY,
     id_verificacao_resultado BIGINT NOT NULL REFERENCES pdca.verificacao_resultado(id) ON DELETE CASCADE,
@@ -245,7 +249,7 @@ CREATE TABLE IF NOT EXISTS pdca.efeito_secundario (
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     atualizado_em TIMESTAMPTZ
 );
- 
+
 CREATE TABLE IF NOT EXISTS pdca.tarefa (
     id BIGSERIAL PRIMARY KEY,
     id_plano_acao BIGINT NOT NULL REFERENCES pdca.plano_acao(id) ON DELETE CASCADE,
@@ -261,8 +265,8 @@ CREATE TABLE IF NOT EXISTS pdca.tarefa (
     atualizado_em TIMESTAMPTZ,
     CONSTRAINT tarefa_datas_check CHECK ((data_inicio_real IS NULL OR data_fim_prevista >= data_inicio_real) AND (data_fim_real IS NULL OR data_inicio_real IS NULL OR data_fim_real >= data_inicio_real))
 );
- 
- 
+
+
 CREATE TABLE IF NOT EXISTS pdca.alerta_prazo (
     id BIGSERIAL PRIMARY KEY,
     id_tarefa BIGINT NOT NULL REFERENCES pdca.tarefa(id) ON DELETE CASCADE,
@@ -271,21 +275,21 @@ CREATE TABLE IF NOT EXISTS pdca.alerta_prazo (
     enviado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     lido_em TIMESTAMPTZ
 );
- 
+
 CREATE TABLE IF NOT EXISTS pdca.tarefa_dependencia (
     id_tarefa BIGINT NOT NULL REFERENCES pdca.tarefa(id) ON DELETE CASCADE,
     id_tarefa_dependencia BIGINT NOT NULL REFERENCES pdca.tarefa(id) ON DELETE CASCADE,
     PRIMARY KEY(id_tarefa, id_tarefa_dependencia),
     CONSTRAINT tarefa_dependencia_diferente_check CHECK (id_tarefa <> id_tarefa_dependencia)
 );
- 
+
 CREATE TABLE IF NOT EXISTS pdca.usuario_ciclo (
     id_usuario BIGINT NOT NULL REFERENCES usuario_sistema(id) ON DELETE CASCADE,
     id_ciclo BIGINT NOT NULL REFERENCES pdca.ciclo(id) ON DELETE CASCADE,
     papel_ciclo VARCHAR(40) NOT NULL CHECK (papel_ciclo IN ('RESPONSAVEL', 'PARTICIPANTE', 'EXECUTOR', 'VALIDADOR', 'OBSERVADOR')),
     PRIMARY KEY (id_usuario, id_ciclo)
 );
- 
+
 CREATE TABLE IF NOT EXISTS pdca.usuario_treinamento (
     id_treinamento BIGINT NOT NULL REFERENCES pdca.treinamento(id) ON DELETE CASCADE,
     id_usuario BIGINT NOT NULL REFERENCES usuario_sistema(id) ON DELETE CASCADE,
@@ -294,7 +298,7 @@ CREATE TABLE IF NOT EXISTS pdca.usuario_treinamento (
     terminado_em TIMESTAMPTZ,
     PRIMARY KEY (id_usuario, id_treinamento)
 );
- 
+
 CREATE TABLE IF NOT EXISTS pdca.priorizacao_problema_usuario (
     id_problema BIGINT NOT NULL REFERENCES pdca.problema(id) ON DELETE CASCADE,
     id_usuario BIGINT NOT NULL REFERENCES usuario_sistema(id) ON DELETE CASCADE,
@@ -304,7 +308,7 @@ CREATE TABLE IF NOT EXISTS pdca.priorizacao_problema_usuario (
     atualizado_em TIMESTAMPTZ,
     PRIMARY KEY (id_problema, id_usuario)
 );
- 
+
 -- Schema auditoria
 CREATE TABLE IF NOT EXISTS auditoria.catalogo_dados (
     id BIGSERIAL PRIMARY KEY,
@@ -322,7 +326,7 @@ CREATE TABLE IF NOT EXISTS auditoria.catalogo_dados (
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT catalogo_dados_unique_0 UNIQUE (tabela, coluna)
 );
- 
+
 CREATE TABLE IF NOT EXISTS auditoria.atv_usuario_dia (
     id BIGSERIAL PRIMARY KEY,
     id_usuario BIGINT NOT NULL,
@@ -332,7 +336,7 @@ CREATE TABLE IF NOT EXISTS auditoria.atv_usuario_dia (
     qnt_acoes INTEGER NOT NULL CHECK (qnt_acoes >= 0),
     CONSTRAINT atv_usuario_dia_horario_check CHECK (hora_fim >= hora_inicio)
 );
- 
+
 CREATE TABLE IF NOT EXISTS auditoria.log_auditoria (
     id BIGSERIAL PRIMARY KEY,
     id_usuario BIGINT NOT NULL,
@@ -344,7 +348,7 @@ CREATE TABLE IF NOT EXISTS auditoria.log_auditoria (
     data_log TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT log_auditoria_json_check CHECK (jsonb_typeof(dados_antes) = 'object' AND jsonb_typeof(dados_depois) = 'object')
 );
- 
+
 CREATE TABLE IF NOT EXISTS auditoria.log_status (
     id BIGSERIAL PRIMARY KEY,
     id_usuario BIGINT NOT NULL,
@@ -354,7 +358,7 @@ CREATE TABLE IF NOT EXISTS auditoria.log_status (
     status_atual VARCHAR(40) NOT NULL,
     data_log TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
- 
+
 CREATE TABLE IF NOT EXISTS auditoria.log_colaborador (
     id BIGSERIAL PRIMARY KEY,
     id_colaborador BIGINT NOT NULL,
@@ -365,7 +369,7 @@ CREATE TABLE IF NOT EXISTS auditoria.log_colaborador (
     data_log TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT log_colaborador_json_check CHECK (jsonb_typeof(dados_antes) = 'object' AND jsonb_typeof(dados_depois) = 'object')
 );
- 
+
 CREATE TABLE IF NOT EXISTS auditoria.log_acesso_usuario (
     id BIGSERIAL PRIMARY KEY,
     id_usuario BIGINT NOT NULL,
@@ -373,7 +377,7 @@ CREATE TABLE IF NOT EXISTS auditoria.log_acesso_usuario (
     acao_realizada VARCHAR(60) NOT NULL,
     acessado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
- 
+
 CREATE TABLE IF NOT EXISTS auditoria.log_tarefa (
     id BIGSERIAL PRIMARY KEY,
     id_tarefa BIGINT NOT NULL,
