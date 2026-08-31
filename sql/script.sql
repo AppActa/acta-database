@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS usuario_sistema (
     tipo_usuario VARCHAR(40) NOT NULL CHECK (tipo_usuario IN ('ADMIN', 'GESTOR', 'COLABORADOR')),
     status VARCHAR(40) NOT NULL CHECK (status IN ('ATIVO', 'INATIVO', 'PENDENTE', 'BLOQUEADO', 'ARQUIVADO')),
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    atualizado_em TIMESTAMPTZ
+    atualizado_em TIMESTAMPTZ,
 
     CONSTRAINT ck_firebase_uid CHECK (status <> 'ATIVO' or firebase_uid IS NOT NULL)
 );
@@ -40,9 +40,9 @@ CREATE TABLE IF NOT EXISTS convite_usuario (
     criado_por BIGINT NOT NULL REFERENCES usuario_sistema(id) ON DELETE RESTRICT,
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT ck_data_expiracao CHECK (expira_em > criado_em)
+    CONSTRAINT ck_data_expiracao CHECK (expira_em > criado_em),
     CONSTRAINT ck_convite_uso CHECK ((status = 'USADO' AND usado_em IS NOT NULL) OR (status <> 'USADO' AND usado_em IS NULL))
-)
+);
  
 CREATE TABLE IF NOT EXISTS colaborador (
     id BIGSERIAL PRIMARY KEY,
@@ -163,7 +163,6 @@ CREATE TABLE IF NOT EXISTS pdca.meta (
 CREATE TABLE IF NOT EXISTS pdca.treinamento (
     id BIGSERIAL PRIMARY KEY,
     id_ciclo BIGINT NOT NULL REFERENCES pdca.ciclo(id) ON DELETE CASCADE,
-    id_anexo_mongo INTEGER,
     id_responsavel BIGINT NOT NULL REFERENCES usuario_sistema(id),
     titulo VARCHAR(160) NOT NULL,
     descricao TEXT,
@@ -426,7 +425,7 @@ CREATE TABLE IF NOT EXISTS pdca.anexo (
         ),
     CONSTRAINT uq_anexo_storage UNIQUE (bucket_arquivo, caminho_arquivo),
     CONSTRAINT ck_anexo_exclusao CHECK ((status = 'EXCLUIDO' AND excluido_em IS NOT NULL) OR (status <> 'EXCLUIDO' AND excluido_em IS NULL)),
-    CONSTRAINT ck_anexo_origem CHECK (categoria = 'OUTRO' OR id_origem IS NOT NULL)
+    CONSTRAINT ck_anexo_origem CHECK (categoria = 'OUTRO' OR id_origem IS NOT NULL),
     CONSTRAINT ck_anexo_tipo_arquivo
         CHECK (
             tipo_arquivo IN (
@@ -438,5 +437,5 @@ CREATE TABLE IF NOT EXISTS pdca.anexo (
                 'text/plain'
             )
             OR tipo_arquivo LIKE 'image/%'
-        ),
+        )
 );

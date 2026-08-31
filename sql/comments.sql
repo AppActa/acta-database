@@ -135,7 +135,7 @@ COMMENT ON COLUMN pdca.meta.atualizado_em IS 'Data e hora da ultima atualizacao 
 COMMENT ON TABLE pdca.treinamento IS 'Treinamentos associados a ciclos PDCA.';
 COMMENT ON COLUMN pdca.treinamento.id IS 'Identificador unico do treinamento.';
 COMMENT ON COLUMN pdca.treinamento.id_ciclo IS 'Ciclo PDCA ao qual o treinamento pertence.';
-COMMENT ON COLUMN pdca.treinamento.id_anexo_mongo IS 'Identificador de anexo externo relacionado ao treinamento.';
+COMMENT ON COLUMN pdca.treinamento.id_anexo IS 'Identificador de anexo relacionado ao treinamento.';
 COMMENT ON COLUMN pdca.treinamento.id_responsavel IS 'Usuario responsavel pelo treinamento.';
 COMMENT ON COLUMN pdca.treinamento.titulo IS 'Titulo do treinamento.';
 COMMENT ON COLUMN pdca.treinamento.descricao IS 'Descricao do treinamento.';
