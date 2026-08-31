@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS usuario_sistema (
     tipo_usuario VARCHAR(40) NOT NULL CHECK (tipo_usuario IN ('ADMIN', 'GESTOR', 'COLABORADOR')),
     status VARCHAR(40) NOT NULL CHECK (status IN ('ATIVO', 'INATIVO', 'PENDENTE', 'BLOQUEADO', 'ARQUIVADO')),
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    atualizado_em TIMESTAMPTZ
+    atualizado_em TIMESTAMPTZ,
 
     CONSTRAINT ck_firebase_uid CHECK (status <> 'ATIVO' or firebase_uid IS NOT NULL)
 );
