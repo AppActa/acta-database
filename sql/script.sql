@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS convite_usuario (
     CONSTRAINT ck_data_expiracao CHECK (expira_em > criado_em),
     CONSTRAINT ck_convite_uso CHECK ((status = 'USADO' AND usado_em IS NOT NULL) OR (status <> 'USADO' AND usado_em IS NULL))
 );
-
+ 
 CREATE TABLE IF NOT EXISTS colaborador (
     id BIGSERIAL PRIMARY KEY,
     id_empresa BIGINT NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
@@ -167,7 +167,6 @@ CREATE TABLE IF NOT EXISTS pdca.meta (
 CREATE TABLE IF NOT EXISTS pdca.treinamento (
     id BIGSERIAL PRIMARY KEY,
     id_ciclo BIGINT NOT NULL REFERENCES pdca.ciclo(id) ON DELETE CASCADE,
-    id_anexo_mongo INTEGER,
     id_responsavel BIGINT NOT NULL REFERENCES usuario_sistema(id),
     titulo VARCHAR(160) NOT NULL,
     descricao TEXT,
