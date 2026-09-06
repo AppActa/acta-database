@@ -2,8 +2,7 @@ name: valida-postgres-local-dev
 
 on:
     pull_request:
-        branches:
-            - 'main'
+        branches: [main]
         paths:
             - 'sql/**'
 

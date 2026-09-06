@@ -2,8 +2,7 @@ name: deploy-neon-prod
 
 on:
     push:
-        branches:
-            - 'main'
+        branches: [main]
         paths:
             - 'sql/**'
 
