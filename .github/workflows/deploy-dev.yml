@@ -1,44 +1,57 @@
-name: deploy-neon-dev
+name: valida-postgres-local-dev
 
 on:
-    pull_request_target:
+    pull_request:
         branches:
             - 'main'
         paths:
-            - 'sql/script.sql'
+            - 'sql/**'
 
 permissions:
+    contents: read
     pull-requests: write
 
 jobs:
     deploy-teste:
-        name: Deploy na branch de testes do banco
+        name: Valida scripts no PostgreSQL local
         runs-on: ubuntu-latest
 
+        services:
+            postgres:
+                image: postgres:16
+                env:
+                    POSTGRES_DB: acta_test
+                    POSTGRES_USER: acta_test
+                    POSTGRES_PASSWORD: acta_test
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd "pg_isready -U acta_test -d acta_test"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
+        env:
+            DATABASE_URL: postgresql://acta_test:acta_test@localhost:5432/acta_test
+
         steps:
+          - name: Instala cliente PostgreSQL (para o act)
+            run: sudo apt-get update && sudo apt-get install postgresql-client
+
           - name: Checkout
             uses: actions/checkout@v4
 
-          - name: Instala postgres
+          - name: Aplica todos os scripts no banco local
             run: |
-                sudo apt-get update -y
-                sudo apt-get install -y postgresql-client
-              
-          - name: Exclui banco atual
-            env:
-                DATABASE_URL: ${{ secrets.NEON_TESTE_DATABASE_URL }}
-            run: |
-                psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
-                    DROP SCHEMA IF EXISTS public CASCADE;
-                    DROP SCHEMA IF EXISTS pdca CASCADE;
-                    DROP SCHEMA IF EXISTS auditoria CASCADE;
-                SQL
+                for arquivo in sql/*.sql; do
+                    echo "Aplicando $arquivo"
 
-          - name: Aplica script.sql no banco de testes
-            env:
-                DATABASE_URL: ${{ secrets.NEON_TESTE_DATABASE_URL }}
-            run: |
-                psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/script.sql
+                    if ! psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$arquivo"; then
+                        echo "::error file=$arquivo::Falha ao aplicar $arquivo"
+                        exit 1
+                    fi
+                done
+
 
           - name: Comenta resultado na Pull Request
             if: always()
@@ -46,9 +59,9 @@ jobs:
             with:
                 script: |
                     const status = '${{ job.status }}'
-                    const mensagem = status === 'success' ? '✅ **Script aplicado com sucesso no banco de testes do Neon!** O banco foi resetado e o `script.sql` desta Pull Request foi carregado!' : '❌ **Falha ao aplicar script no banco de testes do Neon.** Verifique os logs do workflow para ter detalhes...'
+                    const mensagem = status === 'success' ? '✅ **Script aplicado com sucesso no PostgreSQL local!** Os arquivos .sql alterados desta Pull Request foram validados em um banco descartável.' : '❌ **Falha ao aplicar o script no PostgreSQL local.** Verifique os logs do workflow para ter detalhes.'
 
-                    github.rest.issues.createComment({
+                    await github.rest.issues.createComment({
                         issue_number: context.issue.number,
                         owner: context.repo.owner,
                         repo: context.repo.repo,

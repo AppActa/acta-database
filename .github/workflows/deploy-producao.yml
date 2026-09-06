@@ -5,10 +5,10 @@ on:
         branches:
             - 'main'
         paths:
-            - 'sql/script.sql'
+            - 'sql/**'
 
 permissions:
-    pull-requests: write
+    contents: read
 
 jobs:    
     deploy-producao:
@@ -34,23 +34,16 @@ jobs:
                     DROP SCHEMA IF EXISTS auditoria CASCADE;
                 SQL
 
-          - name: Aplica script.sql no banco de produção
+
+          - name: Aplica todos os scripts no banco em produção
             env:
                 DATABASE_URL: ${{ secrets.NEON_PROD_DATABASE_URL }}
             run: |
-                psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f  sql/script.sql
+                for arquivo in sql/*.sql; do
+                    echo "Aplicando $arquivo"
 
-          - name: Configura python
-            uses: actions/setup-python@v5
-            with:
-                python-version: '3.14'
-            
-          - name: Instala dependências Python
-            run: pip install -r python/requirements.txt
-
-          - name: Executa dataload
-            env: 
-                FULL_URL: ${{ secrets.NEON_PROD_DATABASE_URL }}
-                PEPPER: ${{ secrets.PEPPER }}
-            run: |
-                papermill python/dataload.ipynb python/dataload_executado.ipynb
+                    if ! psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$arquivo"; then
+                        echo "::error file=$arquivo::Falha ao aplicar $arquivo"
+                        exit 1
+                    fi
+                done
