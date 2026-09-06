@@ -315,7 +315,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 14 (etapas de verificação antes de uma trefa ser iniciada)
+-- 14 (etapas de verificação antes de uma tarefa ser iniciada)
 CREATE OR REPLACE FUNCTION pdca.fn_pode_iniciar_tarefa(tarefa_id BIGINT, usuario_id BIGINT)
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -389,6 +389,129 @@ BEGIN
     RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql;
+
+-- 15 (etapas de verificação antes de encerrar um ciclo)
+CREATE OR REPLACE FUNCTION pdca.fn_pode_encerrar_ciclo(ciclo_id BIGINT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+AS $$
+DECLARE
+    status_ciclo VARCHAR(40);
+    planos_pendentes INTEGER := 0;
+    tarefas_pendentes INTEGER := 0;
+BEGIN
+    -- Validação 1: Existência e Status do Ciclo
+    SELECT status INTO status_ciclo FROM pdca.ciclo WHERE id = ciclo_id;
+
+    IF status_ciclo IS NULL OR status_ciclo IN ('CONCLUIDO', 'CANCELADO') THEN
+        RETURN FALSE;
+    END IF;
+
+    -- Validação 2: Planos pendentes
+    SELECT COUNT(*) INTO planos_pendentes 
+    FROM pdca.plano_acao
+    WHERE id_ciclo = ciclo_id AND status NOT IN ('CONCLUIDO', 'CANCELADO');
+
+    IF planos_pendentes > 0 THEN
+        RETURN FALSE;
+    END IF;
+
+    -- Validação 3: Tarefas pendentes
+    SELECT COUNT(*) INTO tarefas_pendentes 
+    FROM pdca.tarefa t
+    JOIN pdca.plano_acao pa ON pa.id = t.id_plano_acao
+    WHERE pa.id_ciclo = ciclo_id AND t.status NOT IN ('CONCLUIDA', 'CANCELADA');
+
+    IF tarefas_pendentes > 0 THEN
+        RETURN FALSE;
+    END IF;
+
+    RETURN TRUE;
+END;
+$$;
+
+-- 16 (validar exclusão de registros de email_empresa, telefone_empresa e endereco_empresa)
+CREATE OR REPLACE FUNCTION public.fn_validar_exclusao_empresa()
+RETURNS TRIGGER AS $$
+DECLARE
+    total INT;
+BEGIN
+   
+    IF NOT EXISTS (SELECT 1 FROM public.empresa WHERE id = OLD.id_empresa) THEN
+        RETURN OLD;
+    END IF;
+
+    IF TG_TABLE_NAME = 'email_empresa' THEN
+        SELECT COUNT(*) INTO total FROM public.email_empresa WHERE id_empresa = OLD.id_empresa;
+    ELSIF TG_TABLE_NAME = 'telefone_empresa' THEN
+        SELECT COUNT(*) INTO total FROM public.telefone_empresa WHERE id_empresa = OLD.id_empresa;
+    ELSIF TG_TABLE_NAME = 'endereco_empresa' THEN
+        SELECT COUNT(*) INTO total FROM public.endereco_empresa WHERE id_empresa = OLD.id_empresa;
+    END IF;
+
+    
+    IF total <= 1 THEN
+        IF NOT OLD.principal THEN
+            IF TG_TABLE_NAME = 'email_empresa' THEN
+                UPDATE public.email_empresa SET principal = TRUE WHERE id = OLD.id;
+            ELSIF TG_TABLE_NAME = 'telefone_empresa' THEN
+                UPDATE public.telefone_empresa SET principal = TRUE WHERE id = OLD.id;
+            ELSIF TG_TABLE_NAME = 'endereco_empresa' THEN
+                UPDATE public.endereco_empresa SET principal = TRUE WHERE id = OLD.id;
+            END IF;
+        END IF;
+        
+        RAISE EXCEPTION 'Não é possível excluir o único registro cadastrado para esta empresa.';
+    END IF;
+
+    IF OLD.principal THEN
+        RAISE EXCEPTION 'Não é possível excluir o registro principal.';
+    END IF;
+
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 17 (validar exclusão de registros de email_colaborador e telefone_colaborador)
+CREATE OR REPLACE FUNCTION public.fn_validar_exclusao_colaborador()
+RETURNS TRIGGER AS $$
+DECLARE
+    total INT;
+BEGIN
+
+    IF NOT EXISTS (SELECT 1 FROM public.colaborador WHERE id = OLD.id_colaborador) THEN
+        RETURN OLD;
+    END IF;
+
+
+    IF TG_TABLE_NAME = 'email_colaborador' THEN
+        SELECT COUNT(*) INTO total FROM public.email_colaborador WHERE id_colaborador = OLD.id_colaborador;
+    ELSIF TG_TABLE_NAME = 'telefone_colaborador' THEN
+        SELECT COUNT(*) INTO total FROM public.telefone_colaborador WHERE id_colaborador = OLD.id_colaborador;
+    END IF;
+
+
+    IF total <= 1 THEN
+        IF NOT OLD.principal THEN
+            IF TG_TABLE_NAME = 'email_colaborador' THEN
+                UPDATE public.email_colaborador SET principal = TRUE WHERE id = OLD.id;
+            ELSIF TG_TABLE_NAME = 'telefone_colaborador' THEN
+                UPDATE public.telefone_colaborador SET principal = TRUE WHERE id = OLD.id;
+            END IF;
+        END IF;
+        
+        RAISE EXCEPTION 'Não é possível excluir o único registro cadastrado para este colaborador.';
+    END IF;
+
+    IF OLD.principal THEN
+        RAISE EXCEPTION 'Não é possível excluir o registro principal.';
+    END IF;
+
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
 
 --  ######################
 --  TRIGGERS
@@ -528,6 +651,31 @@ AFTER INSERT OR UPDATE ON pdca.ciclo
 FOR EACH ROW
 EXECUTE FUNCTION pdca.fn_vincular_responsavel_ciclo();
 
+-- 14 (trigger que conecta a função fn_validar_exclusao_empresa() à email_empresa)
+CREATE OR REPLACE TRIGGER tg_validar_exclusao_email_empresa
+BEFORE DELETE ON public.email_empresa
+FOR EACH ROW EXECUTE FUNCTION public.fn_validar_exclusao_empresa();
+
+-- 15 (trigger que conecta a função fn_validar_exclusao_empresa() à telefone_empresa)
+CREATE OR REPLACE TRIGGER tg_validar_exclusao_telefone_empresa
+BEFORE DELETE ON public.telefone_empresa
+FOR EACH ROW EXECUTE FUNCTION public.fn_validar_exclusao_empresa();
+
+-- 16 (trigger que conecta a função fn_validar_exclusao_empresa() à endereco_empresa)
+CREATE OR REPLACE TRIGGER tg_validar_exclusao_endereco_empresa
+BEFORE DELETE ON public.endereco_empresa
+FOR EACH ROW EXECUTE FUNCTION public.fn_validar_exclusao_empresa();
+
+-- 17 (trigger que conecta a função fn_validar_exclusao_colaborador() à email_colaborador)
+CREATE OR REPLACE TRIGGER tg_validar_exclusao_email_colaborador
+BEFORE DELETE ON public.email_colaborador
+FOR EACH ROW EXECUTE FUNCTION public.fn_validar_exclusao_colaborador();
+
+-- 18 (trigger que conecta a função fn_validar_exclusao_colaborador() à telefone_colaborador)
+CREATE OR REPLACE TRIGGER tg_validar_exclusao_telefone_colaborador
+BEFORE DELETE ON public.telefone_colaborador
+FOR EACH ROW EXECUTE FUNCTION public.fn_validar_exclusao_colaborador();
+
 --  ######################
 --  PROCEDURES
 --  ######################
@@ -566,44 +714,44 @@ BEGIN
 END;
 $$;
 
--- 4 (etapas de verificação antes de encerrar um ciclo)
+-- 4 (encerrar ciclo se passar das verificações da função fn_pode_encerrar_ciclo)
 CREATE OR REPLACE PROCEDURE pdca.pr_encerrar_ciclo(ciclo_id BIGINT)
 LANGUAGE plpgsql
 AS $$
-DECLARE
-    status_ciclo VARCHAR(40);
-    planos_pendentes INTEGER := 0;
-    tarefas_pendentes INTEGER := 0;
 BEGIN
 
-    SELECT status INTO status_ciclo FROM pdca.ciclo WHERE id = ciclo_id;
-
-    IF status_ciclo IS NULL THEN
-        RAISE EXCEPTION 'Ciclo não encontrado.';
-    END IF;
-
-    IF status_ciclo IN ('CONCLUIDO', 'CANCELADO') THEN
-        RAISE EXCEPTION 'O ciclo já está encerrado ou cancelado.';
-    END IF;
-
-    -- planos_pendentes
-    SELECT COUNT(*) INTO planos_pendentes FROM pdca.plano_acao
-    WHERE id_ciclo = ciclo_id AND status NOT IN ('CONCLUIDO', 'CANCELADO');
-
-    IF planos_pendentes > 0 THEN
-        RAISE EXCEPTION 'Não é possível encerrar o ciclo. Existem % plano(s) de ação não finalizados.', planos_pendentes;
-    END IF;
-
-    -- tarefas_pendentes
-    SELECT COUNT(*) INTO tarefas_pendentes FROM pdca.tarefa t
-    JOIN pdca.plano_acao pa ON pa.id = t.id_plano_acao
-    WHERE pa.id_ciclo = ciclo_id AND t.status NOT IN ('CONCLUIDA', 'CANCELADA');
-
-    IF tarefas_pendentes > 0 THEN
-        RAISE EXCEPTION 'Não é possível encerrar o ciclo. Existem % tarefa(s) pendente(s).', tarefas_pendentes;
+    IF NOT pdca.fn_pode_encerrar_ciclo(ciclo_id) THEN
+        RAISE EXCEPTION 'Não é possível encerrar o ciclo.';
     END IF;
 
     UPDATE pdca.ciclo SET status = 'CONCLUIDO', data_fim_real = CURRENT_DATE, atualizado_em = NOW() WHERE id = ciclo_id;
+END;
+$$;
+
+-- 5 (reabertura de tarefa concluída ou cancelada, com novo prazo)
+CREATE OR REPLACE PROCEDURE pdca.pr_reabrir_tarefa(tarefa_id BIGINT, novo_prazo DATE)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    status_atual VARCHAR(20);
+BEGIN
+
+    SELECT status INTO status_atual FROM pdca.tarefa WHERE id = tarefa_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Tarefa com ID % não encontrada.', tarefa_id;
+    END IF;
+
+    IF status_atual NOT IN ('CONCLUIDA', 'CANCELADA') THEN
+        RAISE EXCEPTION 'Apenas tarefas com status CONCLUIDA ou CANCELADA podem ser reabertas. Status atual: %', status_atual;
+    END IF;
+
+    IF novo_prazo < CURRENT_DATE THEN
+        RAISE EXCEPTION 'O novo prazo (%) não pode ser menor que o dia atual.', TO_CHAR(novo_prazo, 'DD/MM/YYYY');
+    END IF;
+
+    UPDATE pdca.tarefa SET status = 'EM_ANDAMENTO', data_fim_prevista = novo_prazo, data_fim_real = NULL, 
+    atualizado_em = CURRENT_TIMESTAMP WHERE id = tarefa_id;
 END;
 $$;
 
