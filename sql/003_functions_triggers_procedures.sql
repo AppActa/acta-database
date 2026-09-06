@@ -754,4 +754,3 @@ BEGIN
     atualizado_em = CURRENT_TIMESTAMP WHERE id = tarefa_id;
 END;
 $$;
-
