@@ -98,17 +98,17 @@ BEGIN
 
     IF TG_OP = 'INSERT' THEN
         INSERT INTO auditoria.log_auditoria (id_usuario, id_registro, tabela, operacao, dados_antes, dados_depois, data_log)
-        VALUES (usuario, NEW.id, TG_TABLE_NAME, 'INSERT', '{}'::jsonb, to_jsonb(NEW));
+        VALUES (usuario, NEW.id, TG_TABLE_NAME, 'INSERT', '{}'::jsonb, to_jsonb(NEW),  NOW());
         RETURN NEW;
 
     ELSIF TG_OP = 'UPDATE' THEN
         INSERT INTO auditoria.log_auditoria (id_usuario, id_registro, tabela, operacao, dados_antes, dados_depois, data_log)
-        VALUES (usuario, NEW.id, TG_TABLE_NAME, 'UPDATE', to_jsonb(OLD), to_jsonb(NEW));
+        VALUES (usuario, NEW.id, TG_TABLE_NAME, 'UPDATE', to_jsonb(OLD), to_jsonb(NEW),  NOW());
         RETURN NEW;
 
     ELSIF TG_OP = 'DELETE' THEN
         INSERT INTO auditoria.log_auditoria (id_usuario, id_registro, tabela, operacao, dados_antes, dados_depois, data_log)
-        VALUES (usuario, OLD.id, TG_TABLE_NAME, 'DELETE', to_jsonb(OLD), '{}'::jsonb);
+        VALUES (usuario, OLD.id, TG_TABLE_NAME, 'DELETE', to_jsonb(OLD), '{}'::jsonb, NOW());
         RETURN OLD;
 
     END IF;
@@ -136,17 +136,17 @@ BEGIN
 
     IF TG_OP = 'INSERT' THEN
         INSERT INTO auditoria.log_colaborador (id_colaborador, id_usuario, operacao, dados_antes, dados_depois, data_log) VALUES (
-        NEW.id, usuario, 'INSERT', '{}'::jsonb, to_jsonb(NEW));
+        NEW.id, usuario, 'INSERT', '{}'::jsonb, to_jsonb(NEW), NOW());
         RETURN NEW;
 
     ELSIF TG_OP = 'UPDATE' THEN
         INSERT INTO auditoria.log_colaborador (id_colaborador, id_usuario, operacao, dados_antes, dados_depois, data_log) VALUES (
-        NEW.id, usuario, 'UPDATE', to_jsonb(OLD), to_jsonb(NEW));
+        NEW.id, usuario, 'UPDATE', to_jsonb(OLD), to_jsonb(NEW),  NOW());
         RETURN NEW;
 
     ELSIF TG_OP = 'DELETE' THEN
         INSERT INTO auditoria.log_colaborador (id_colaborador, id_usuario, operacao, dados_antes, dados_depois, data_log) VALUES (
-        OLD.id, usuario, 'DELETE', to_jsonb(OLD), '{}'::jsonb);
+        OLD.id, usuario, 'DELETE', to_jsonb(OLD), '{}'::jsonb, NOW());
         RETURN OLD;
     END IF;
 
@@ -173,17 +173,17 @@ BEGIN
     
     IF TG_OP = 'INSERT' THEN
         INSERT INTO auditoria.log_tarefa (id_tarefa, id_usuario, operacao, dados_antes, dados_depois, data_log) VALUES (
-        NEW.id, usuario,'INSERT', '{}'::jsonb, to_jsonb(NEW));
+        NEW.id, usuario,'INSERT', '{}'::jsonb, to_jsonb(NEW), NOW());
         RETURN NEW;
 
     ELSIF TG_OP = 'UPDATE' THEN
         INSERT INTO auditoria.log_tarefa (id_tarefa, id_usuario, operacao, dados_antes, dados_depois, data_log) VALUES (
-        NEW.id, usuario, 'UPDATE', to_jsonb(OLD), to_jsonb(NEW));
+        NEW.id, usuario, 'UPDATE', to_jsonb(OLD), to_jsonb(NEW),  NOW());
         RETURN NEW;
 
     ELSIF TG_OP = 'DELETE' THEN
         INSERT INTO auditoria.log_tarefa (id_tarefa, id_usuario, operacao, dados_antes, dados_depois, data_log) VALUES (
-        OLD.id, usuario, 'DELETE', to_jsonb(OLD),'{}'::jsonb);
+        OLD.id, usuario, 'DELETE', to_jsonb(OLD),'{}'::jsonb, NOW());
         RETURN OLD;
     END IF;
 
