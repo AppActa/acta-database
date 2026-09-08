@@ -372,7 +372,7 @@ SELECT
     CASE
         WHEN sq.status_verificacao_anterior IS NULL
             THEN 'PRIMEIRA_VERIFICACAO'
-        WHEN sq.status = sq.status_verx ificacao_anterior
+        WHEN sq.status = sq.status_verificacao_anterior
             THEN 'STATUS_MANTIDO'
         ELSE 'STATUS_ALTERADO'
     END AS tipo_movimentacao
