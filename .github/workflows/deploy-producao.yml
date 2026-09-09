@@ -5,6 +5,7 @@ on:
         branches: [main]
         paths:
             - 'sql/**'
+            - 'python/**'
 
 permissions:
     contents: read
@@ -46,3 +47,16 @@ jobs:
                         exit 1
                     fi
                 done
+
+          - name: Configura Python
+            uses: actions/setup-python@v5
+            with:
+                python-version: '3.12'
+
+          - name: Instala dependências do dataload
+            run: python -m pip install --disable-pip-version-check -r python/requirements.txt
+
+          - name: Executa dataload Python em produção
+            env:
+                FULL_URL: ${{ secrets.NEON_PROD_DATABASE_URL }}
+            run: papermill python/dataload.ipynb /tmp/dataload-output.ipynb
