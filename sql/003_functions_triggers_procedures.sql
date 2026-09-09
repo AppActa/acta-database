@@ -196,18 +196,18 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION pdca.fn_recalcular_peso_problema()
 RETURNS TRIGGER AS $$
 DECLARE
-    problema BIGINT;
+    v_id_problema BIGINT;
     media NUMERIC(3,2);
 BEGIN
-    problema := CASE
+    v_id_problema := CASE
         WHEN TG_OP = 'DELETE' THEN OLD.id_problema
         ELSE NEW.id_problema
     END;
 
     SELECT COALESCE(AVG(peso_calculado), 0) INTO media FROM pdca.priorizacao_problema_usuario
-    WHERE id_problema = problema;
+    WHERE id_problema = v_id_problema;
 
-    UPDATE pdca.problema SET peso = media, atualizado_em = NOW() WHERE id = problema;
+    UPDATE pdca.problema SET peso = media, atualizado_em = NOW() WHERE id = v_id_problema;
 
     RETURN COALESCE(NEW, OLD);
 END;
