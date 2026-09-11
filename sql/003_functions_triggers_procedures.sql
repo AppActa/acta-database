@@ -685,13 +685,21 @@ FOR EACH ROW EXECUTE FUNCTION public.fn_validar_exclusao_colaborador();
 CREATE OR REPLACE PROCEDURE pdca.pr_gerar_alertas_atraso()
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    r RECORD;
 BEGIN
-    INSERT INTO pdca.alerta_prazo (id_tarefa, id_usuario_destino, mensagem) SELECT t.id, t.id_responsavel,
-    FORMAT('A tarefa "%s" está atrasada desde %s.', t.titulo, TO_CHAR(t.data_fim_prevista, 'DD/MM/YYYY')) FROM pdca.tarefa t 
-    WHERE t.data_fim_prevista < CURRENT_DATE 
-    AND t.status NOT IN ('CONCLUIDA', 'CANCELADA');
+    FOR r IN
+        SELECT id, id_responsavel, titulo, data_fim_prevista FROM pdca.tarefa
+        WHERE data_fim_prevista < CURRENT_DATE AND status NOT IN ('CONCLUIDA', 'CANCELADA')
+    LOOP
+        PERFORM set_config('app.current_user_id', r.id_responsavel::text, true);
 
-    UPDATE pdca.tarefa SET status = 'ATRASADA' WHERE data_fim_prevista < CURRENT_DATE AND status NOT IN ('CONCLUIDA', 'CANCELADA');
+        INSERT INTO pdca.alerta_prazo (id_tarefa, id_usuario_destino, mensagem) VALUES (r.id, r.id_responsavel,
+        FORMAT('A tarefa "%s" está atrasada desde %s.', r.titulo, TO_CHAR(r.data_fim_prevista, 'DD/MM/YYYY')));
+
+        UPDATE pdca.tarefa SET status = 'ATRASADA' WHERE id = r.id;
+
+    END LOOP;
 END;
 $$;
 
