@@ -45,7 +45,7 @@ def carregar_empresa():
     tamanho_map = {"PEQUENA": "PEQUENA", "MEDIA": "MEDIA", "GRANDE": "GRANDE"}
 
     df_destino = pd.DataFrame({
-        "id": df["empresa_id"],
+        "id": df["id_empresa"],
         "cnpj": df["cnpj"].apply(limpar_digitos).str.zfill(14),
         "nome": df["nome"].str.strip(),
         "tamanho_empresa": df["tamanho"].map(tamanho_map).fillna("MEDIA"),
@@ -54,7 +54,15 @@ def carregar_empresa():
         "criado_em": pd.Timestamp.now()
     })
 
-    df_destino.to_sql("empresa", engine_destino, schema="public", if_exists="append", index=False)
+    # Lê os IDs já gravados no destino
+    ids_existentes = pd.read_sql("SELECT id FROM public.empresa", engine_destino)["id"].tolist()
+
+    # Filtra o DataFrame para enviar apenas novos IDs
+    df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
+
+    if not df_destino.empty:
+        df_destino.to_sql("empresa", engine_destino, schema="public", if_exists="append", index=False)
+
 
 # Tabelas usuario_sistema, colaborador, email_colaborador, telefone_colaborador
 
@@ -71,8 +79,8 @@ def carregar_usuarios_e_colaboradores():
 
     # Tabela public.usuario_sistema
     df_usuario = pd.DataFrame({
-        "id": df_colab["colaborador_id"],
-        "id_empresa": df_colab["empresa_id"],
+        "id": df_colab["id_colaborador"],
+        "id_empresa": df_colab["id_empresa"],
         "nome": (df_colab["nome"].str.strip() + " " + df_colab["sobrenome"].str.strip()),
         "email_login": df_colab["email_limpo"],
         "firebase_uid": None, 
@@ -80,13 +88,21 @@ def carregar_usuarios_e_colaboradores():
         "status": "PENDENTE", 
         "criado_em": pd.Timestamp.now()
     })
-    df_usuario.to_sql("usuario_sistema", engine_destino, schema="public", if_exists="append", index=False)
+
+    # Lê os IDs já gravados no destino
+    ids_existentes = pd.read_sql("SELECT id FROM public.usuario_sistema", engine_destino)["id"].tolist()
+
+    # Filtra o DataFrame para enviar apenas novos IDs
+    df_usuario = df_usuario[~df_usuario["id"].isin(ids_existentes)]
+
+    if not df_usuario.empty:
+        df_usuario.to_sql("usuario_sistema", engine_destino, schema="public", if_exists="append", index=False)
 
     # Tabela public.colaborador
     df_colaborador_detalhe = pd.DataFrame({
-        "id": df_colab["colaborador_id"],
-        "id_empresa": df_colab["empresa_id"],
-        "id_usuario": df_colab["colaborador_id"],
+        "id": df_colab["id_colaborador"],
+        "id_empresa": df_colab["id_empresa"],
+        "id_usuario": df_colab["id_colaborador"],
         "cpf": df_colab["cpf_limpo"],
         "nome": (df_colab["nome"].str.strip() + " " + df_colab["sobrenome"].str.strip()),
         "cargo": df_colab["cargo"].str.strip(),
@@ -97,28 +113,68 @@ def carregar_usuarios_e_colaboradores():
         "status": df_colab["status"].map({"ATIVA": "ATIVO", "INATIVA": "INATIVO"}).fillna("ATIVO"),
         "criado_em": pd.Timestamp.now()
     })
-    df_colaborador_detalhe.to_sql("colaborador", engine_destino, schema="public", if_exists="append", index=False)
+
+    # Lê os IDs já gravados no destino
+    ids_existentes = pd.read_sql("SELECT id FROM public.colaborador", engine_destino)["id"].tolist()
+
+    # Filtra o DataFrame para enviar apenas novos IDs
+    df_colaborador_detalhe = df_colaborador_detalhe[~df_colaborador_detalhe["id"].isin(ids_existentes)]
+
+    if not df_colaborador_detalhe.empty:
+        df_colaborador_detalhe.to_sql("colaborador", engine_destino, schema="public", if_exists="append", index=False)
 
     # Tabela public.email_colaborador
     df_email = pd.DataFrame({
-        "id_colaborador": df_colab["colaborador_id"],
+        "id_colaborador": df_colab["id_colaborador"],
         "email": df_colab["email_limpo"],
         "principal": True,
         "criado_em": pd.Timestamp.now()
     })
-    df_email.dropna(subset=["email"]).to_sql("email_colaborador", engine_destino, schema="public", if_exists="append", index=False)
+
+# Tabela public.email_colaborador
+    df_email = pd.DataFrame({
+        "id_colaborador": df_colab["id_colaborador"],
+        "email": df_colab["email_limpo"],
+        "principal": True,
+        "criado_em": pd.Timestamp.now()
+    }).dropna(subset=["email"])
+
+    if not df_email.empty:
+        dados_existentes = pd.read_sql("SELECT id_colaborador, email FROM public.email_colaborador", engine_destino)
+        emails_existentes = dados_existentes["email"].tolist()
+        colabs_existentes = dados_existentes["id_colaborador"].tolist()
+
+        df_email_filtrado = df_email[
+            (~df_email["email"].isin(emails_existentes)) & 
+            (~df_email["id_colaborador"].isin(colabs_existentes))
+        ]
+
+        if not df_email_filtrado.empty:
+            df_email_filtrado.to_sql("email_colaborador", engine_destino, schema="public", if_exists="append", index=False)
+
 
     # Tabela public.telefone_colaborador
     df_tel = pd.DataFrame({
-        "id_colaborador": df_colab["colaborador_id"],
+        "id_colaborador": df_colab["id_colaborador"],
         "numero_telefone": df_colab["telefone_limpo"],
         "principal": True,
         "criado_em": pd.Timestamp.now()
     })
 
-   
     df_tel = df_tel[df_tel["numero_telefone"].str.len().between(10, 15)]
-    df_tel.to_sql("telefone_colaborador", engine_destino, schema="public", if_exists="append", index=False)
+
+    if not df_tel.empty:
+        dados_tel_existentes = pd.read_sql("SELECT id_colaborador, numero_telefone FROM public.telefone_colaborador", engine_destino)
+        tels_existentes = dados_tel_existentes["numero_telefone"].tolist()
+        colabs_tel_existentes = dados_tel_existentes["id_colaborador"].tolist()
+
+        df_tel_filtrado = df_tel[
+            (~df_tel["numero_telefone"].isin(tels_existentes)) &
+            (~df_tel["id_colaborador"].isin(colabs_tel_existentes))
+        ]
+
+        if not df_tel_filtrado.empty:
+            df_tel_filtrado.to_sql("telefone_colaborador", engine_destino, schema="public", if_exists="append", index=False)
 
 
 # Tabela pdca.ciclo
@@ -137,9 +193,9 @@ def carregar_ciclos():
     }
 
     df_destino = pd.DataFrame({
-        "id": df["ciclo_id"],
-        "id_empresa": df["empresa_id"],
-        "id_responsavel": df["responsavel_id"],
+        "id": df["id_ciclo"],
+        "id_empresa": df["id_empresa"],
+        "id_responsavel": df["id_responsavel"],
         "titulo": df["nome"].str.strip(),
         "descricao": df["descricao"].fillna("Sem descrição"),
         "status": df["status"].map(status_map).fillna("PLANEJAMENTO"),
@@ -148,7 +204,14 @@ def carregar_ciclos():
         "criado_em": df["criado_em"]
     })
 
-    df_destino.to_sql("ciclo", engine_destino, schema="pdca", if_exists="append", index=False)
+    # Lê os IDs já gravados no destino
+    ids_existentes = pd.read_sql("SELECT id FROM pdca.ciclo", engine_destino)["id"].tolist()
+
+    # Filtra o DataFrame para enviar apenas novos IDs
+    df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
+
+    if not df_destino.empty:
+        df_destino.to_sql("ciclo", engine_destino, schema="pdca", if_exists="append", index=False)
 
 # Tabela pdca.plano_acao
 
@@ -172,18 +235,25 @@ def carregar_planos_acao():
     }
 
     df_destino = pd.DataFrame({
-        "id": df["plano_acao_id"],
-        "id_ciclo": df["ciclo_id"],
+        "id": df["id_plano_acao"],
+        "id_ciclo": df["id_ciclo"],
         "nome": df["nome"].str.strip(),
         "objetivo": df["descricao"],
         "prioridade": df["prioridade"].map(prioridade_map).fillna("MEDIA"),
         "status": df["status"].map(status_map).fillna("RASCUNHO"),
         "origem": "IMPORTACAO",
-        "criado_por": df["criador_id"],
+        "criado_por": df["id_criador"],
         "criado_em": pd.Timestamp.now()
     })
 
-    df_destino.to_sql("plano_acao", engine_destino, schema="pdca", if_exists="append", index=False)
+    # Lê os IDs já gravados no destino
+    ids_existentes = pd.read_sql("SELECT id FROM pdca.plano_acao", engine_destino)["id"].tolist()
+
+    # Filtra o DataFrame para enviar apenas novos IDs
+    df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
+
+    if not df_destino.empty:
+        df_destino.to_sql("plano_acao", engine_destino, schema="pdca", if_exists="append", index=False)
 
 # Tabela pdca.plano_5w2h
 
@@ -195,8 +265,8 @@ def carregar_plano_5w2h():
         return
 
     df_destino = pd.DataFrame({
-        "id": df["plano_acao_5w2h_id"],
-        "id_plano_acao": df["plano_acao_id"],
+        "id": df["id_plano_acao_5w2h"],
+        "id_plano_acao": df["id_plano_acao"],
         "id_who_responsavel": df["who"],
         "what_acao": df["what"],
         "why_justificativa": df["why"].fillna("Sem justificativa definida"),
@@ -208,7 +278,14 @@ def carregar_plano_5w2h():
         "criado_em": pd.Timestamp.now()
     })
 
-    df_destino.to_sql("plano_5w2h", engine_destino, schema="pdca", if_exists="append", index=False)
+    # Lê os IDs já gravados no destino
+    ids_existentes = pd.read_sql("SELECT id FROM pdca.plano_5w2h", engine_destino)["id"].tolist()
+
+    # Filtra o DataFrame para enviar apenas novos IDs
+    df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
+
+    if not df_destino.empty:
+        df_destino.to_sql("plano_5w2h", engine_destino, schema="pdca", if_exists="append", index=False)
 
 # Tabela pdca.meta
 
@@ -232,9 +309,9 @@ def carregar_metas():
     }
 
     df_destino = pd.DataFrame({
-        "id": df["meta_id"],
-        "id_ciclo": df["ciclo_id"],
-        "id_plano_acao": df["plano_acao_id"],
+        "id": df["id_meta"],
+        "id_ciclo": df["id_ciclo"],
+        "id_plano_acao": df["id_plano_acao"],
         "objetivo": (df["descricao_meta"].fillna("") + " - " + df["objetivo"].fillna("")).str.strip(" - "),
         "valor_base": 0.00,
         "valor_alvo": 0.00,
@@ -247,7 +324,14 @@ def carregar_metas():
         "criado_em": df["criado_em"]
     })
 
-    df_destino.to_sql("meta", engine_destino, schema="pdca", if_exists="append", index=False)
+    # Lê os IDs já gravados no destino
+    ids_existentes = pd.read_sql("SELECT id FROM pdca.meta", engine_destino)["id"].tolist()
+
+    # Filtra o DataFrame para enviar apenas novos IDs
+    df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
+
+    if not df_destino.empty:
+        df_destino.to_sql("meta", engine_destino, schema="pdca", if_exists="append", index=False)
 
 # Tabela pdca.tarefa
 
@@ -271,9 +355,9 @@ def carregar_tarefas():
     }
 
     df_destino = pd.DataFrame({
-        "id": df["tarefa_id"],
-        "id_plano_acao": df["plano_acao_id"], 
-        "id_responsavel": df["colaborador_id"],
+        "id": df["id_tarefa"],
+        "id_plano_acao": df["id_plano_acao"], 
+        "id_responsavel": df["id_colaborador"],
         "titulo": df["titulo"].str.strip(),
         "descricao": df["descricao"].fillna("Sem descrição"),
         "prioridade": df["prioridade"].map(prioridade_map).fillna("MEDIA"),
@@ -283,7 +367,14 @@ def carregar_tarefas():
         "criado_em": pd.Timestamp.now()
     })
 
-    df_destino.to_sql("tarefa", engine_destino, schema="pdca", if_exists="append", index=False)
+    # Lê os IDs já gravados no destino
+    ids_existentes = pd.read_sql("SELECT id FROM pdca.tarefa", engine_destino)["id"].tolist()
+
+    # Filtra o DataFrame para enviar apenas novos IDs
+    df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
+
+    if not df_destino.empty:
+        df_destino.to_sql("tarefa", engine_destino, schema="pdca", if_exists="append", index=False)
 
 # Tabela pdca.problema
 
@@ -301,10 +392,10 @@ def carregar_problemas():
     }
 
     df_destino = pd.DataFrame({
-        "id": df["problema_id"],
-        "id_ciclo": df["ciclo_id"],
+        "id": df["id_problema"],
+        "id_ciclo": df["id_ciclo"],
         "id_problema_pai": None,
-        "criado_por": df["colaborador_id"],
+        "criado_por": df["id_colaborador"],
         "titulo": df["titulo"].str.strip(),
         "descricao": df["descricao"].str.strip(),
         "peso": 0.50, 
@@ -314,7 +405,14 @@ def carregar_problemas():
         "criado_em": df["encontrado_em"]
     })
 
-    df_destino.to_sql("problema", engine_destino, schema="pdca", if_exists="append", index=False)
+    # Lê os IDs já gravados no destino
+    ids_existentes = pd.read_sql("SELECT id FROM pdca.problema", engine_destino)["id"].tolist()
+
+    # Filtra o DataFrame para enviar apenas novos IDs
+    df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
+
+    if not df_destino.empty:
+        df_destino.to_sql("problema", engine_destino, schema="pdca", if_exists="append", index=False)
 
 
 # ATUALIZAÇÃO DE SEQUÊNCIAS DO POSTGRES
