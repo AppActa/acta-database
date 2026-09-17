@@ -512,6 +512,69 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- 18 (impedir reutilização de convite usado / revogado / expirado)
+CREATE OR REPLACE FUNCTION public.fn_bloquear_reuso_convite()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.status IN ('USADO', 'REVOGADO', 'EXPIRADO') AND NEW.status <> OLD.status THEN
+        RAISE EXCEPTION 'Convite já foi finalizado e não pode ter seu status alterado.';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 19 (expirar convite automaticamente ao tentar usar)
+CREATE OR REPLACE FUNCTION public.fn_validar_expiracao_convite()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.status = 'USADO' AND OLD.expira_em <= NOW() THEN
+        RAISE EXCEPTION 'Convite expirado não pode ser mais usado';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 20 (garantir que se o convite expire, seja possível criar outro apenas relacionado ao usuário pendente)
+CREATE OR REPLACE TRIGGER public.fn_preparar_criacao_convite()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_status_usuario VARCHAR(40);
+    v_firebase_uid VARCHAR(128);
+
+BEGIN
+    SELECT status, firebase_uid
+    INTO v_status_usuario, v_firebase_uid
+    FROM usuario_sistema
+    WHERE id = NEW.id_usuario;
+
+    IF v_status_usuario <> 'PENDENTE' THEN
+        RAISE EXCEPTION 'Convite só pode ser criado para usuário pendente';
+    END IF;
+
+    IF v_firebase_uid IS NOT NULL THEN 
+        RAISE EXCEPTION 'Convite não pode ser criado para usuário já ativado';
+    END IF;
+
+    UPDATE convite_usuario SET status = 'EXPIRADO'
+    WHERE id_usuario = NEW.id_usuario 
+    AND status = 'PENDENTE' 
+    AND expira_em <= NOW();
+
+    IF EXISTS (
+        SELECT 1 FROM convite_usuario
+        SET status = 'EXPIRADO'
+        WHERE id_usuario = NEW.id_usuario
+        AND status = 'PENDENTE'
+        AND expirado_em > NOW(0)
+    ) THEN
+        RAISE EXCEPTION 'Já existe convite pendente válido para esse usuário'
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 --  ######################
 --  TRIGGERS
@@ -675,6 +738,24 @@ FOR EACH ROW EXECUTE FUNCTION public.fn_validar_exclusao_colaborador();
 CREATE OR REPLACE TRIGGER tg_validar_exclusao_telefone_colaborador
 BEFORE DELETE ON public.telefone_colaborador
 FOR EACH ROW EXECUTE FUNCTION public.fn_validar_exclusao_colaborador();
+
+-- 19 (trigger que conecta a função fn_bloquear_reuso_convite() à convite_usuario)
+CREATE OR REPLACE TRIGGER tg_bloquear_reuso_convite
+BEFORE UPDATE ON public.convite_usuario
+FOR EACH ROW
+EXECUTE FUNCTION public.fn_bloquear_reuso_convite();
+
+-- 20 (trigger que conecta a função fn_validar_expiracao_convite() à convite_usuario)
+CREATE OR REPLACE TRIGGER tg_validar_expiracao_convite
+BEFORE UPDATE ON public.convite_usuario
+FOR EACH ROW
+EXECUTE FUNCTION public.fn_validar_expiracao_convite();
+
+-- 21 (trigger que conecta a função fn_preparar_criacao_convite à convite_usuario)
+CREATE OR REPLACE TRIGGER tg_preparar_criacao_convite
+BEFORE INSERT ON public.convite_usuario
+FOR EACH ROW 
+EXECUTE FUNCTION public.fn_preparar_criacao_convite();
 
 --  ######################
 --  PROCEDURES
