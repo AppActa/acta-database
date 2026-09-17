@@ -54,10 +54,8 @@ def carregar_empresa():
         "criado_em": pd.Timestamp.now()
     })
 
-    # Lê os IDs já gravados no destino
     ids_existentes = pd.read_sql("SELECT id FROM public.empresa", engine_destino)["id"].tolist()
 
-    # Filtra o DataFrame para enviar apenas novos IDs
     df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
 
     if not df_destino.empty:
@@ -89,10 +87,8 @@ def carregar_usuarios_e_colaboradores():
         "criado_em": pd.Timestamp.now()
     })
 
-    # Lê os IDs já gravados no destino
     ids_existentes = pd.read_sql("SELECT id FROM public.usuario_sistema", engine_destino)["id"].tolist()
 
-    # Filtra o DataFrame para enviar apenas novos IDs
     df_usuario = df_usuario[~df_usuario["id"].isin(ids_existentes)]
 
     if not df_usuario.empty:
@@ -114,10 +110,8 @@ def carregar_usuarios_e_colaboradores():
         "criado_em": pd.Timestamp.now()
     })
 
-    # Lê os IDs já gravados no destino
     ids_existentes = pd.read_sql("SELECT id FROM public.colaborador", engine_destino)["id"].tolist()
 
-    # Filtra o DataFrame para enviar apenas novos IDs
     df_colaborador_detalhe = df_colaborador_detalhe[~df_colaborador_detalhe["id"].isin(ids_existentes)]
 
     if not df_colaborador_detalhe.empty:
@@ -204,10 +198,8 @@ def carregar_ciclos():
         "criado_em": df["criado_em"]
     })
 
-    # Lê os IDs já gravados no destino
     ids_existentes = pd.read_sql("SELECT id FROM pdca.ciclo", engine_destino)["id"].tolist()
 
-    # Filtra o DataFrame para enviar apenas novos IDs
     df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
 
     if not df_destino.empty:
@@ -246,10 +238,8 @@ def carregar_planos_acao():
         "criado_em": pd.Timestamp.now()
     })
 
-    # Lê os IDs já gravados no destino
     ids_existentes = pd.read_sql("SELECT id FROM pdca.plano_acao", engine_destino)["id"].tolist()
 
-    # Filtra o DataFrame para enviar apenas novos IDs
     df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
 
     if not df_destino.empty:
@@ -278,10 +268,8 @@ def carregar_plano_5w2h():
         "criado_em": pd.Timestamp.now()
     })
 
-    # Lê os IDs já gravados no destino
     ids_existentes = pd.read_sql("SELECT id FROM pdca.plano_5w2h", engine_destino)["id"].tolist()
 
-    # Filtra o DataFrame para enviar apenas novos IDs
     df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
 
     if not df_destino.empty:
@@ -324,10 +312,8 @@ def carregar_metas():
         "criado_em": df["criado_em"]
     })
 
-    # Lê os IDs já gravados no destino
     ids_existentes = pd.read_sql("SELECT id FROM pdca.meta", engine_destino)["id"].tolist()
 
-    # Filtra o DataFrame para enviar apenas novos IDs
     df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
 
     if not df_destino.empty:
@@ -367,10 +353,8 @@ def carregar_tarefas():
         "criado_em": pd.Timestamp.now()
     })
 
-    # Lê os IDs já gravados no destino
     ids_existentes = pd.read_sql("SELECT id FROM pdca.tarefa", engine_destino)["id"].tolist()
 
-    # Filtra o DataFrame para enviar apenas novos IDs
     df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
 
     if not df_destino.empty:
@@ -405,10 +389,8 @@ def carregar_problemas():
         "criado_em": df["encontrado_em"]
     })
 
-    # Lê os IDs já gravados no destino
     ids_existentes = pd.read_sql("SELECT id FROM pdca.problema", engine_destino)["id"].tolist()
 
-    # Filtra o DataFrame para enviar apenas novos IDs
     df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
 
     if not df_destino.empty:
