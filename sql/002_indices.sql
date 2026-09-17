@@ -291,3 +291,6 @@ ON public.telefone_empresa (id_empresa) WHERE principal = TRUE;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_email_empresa_principal
 ON public.email_empresa (id_empresa) WHERE principal = TRUE;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_convite_usuario_pendente
+ON public.convite_usuario (id_usuario) WHERE status = 'PENDENTE';
