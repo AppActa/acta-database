@@ -537,7 +537,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 20 (garantir que se o convite expire, seja possível criar outro apenas relacionado ao usuário pendente)
-CREATE OR REPLACE TRIGGER public.fn_preparar_criacao_convite()
+CREATE OR REPLACE FUNCTION public.fn_preparar_criacao_convite()
 RETURNS TRIGGER AS $$
 DECLARE
     v_status_usuario VARCHAR(40);
