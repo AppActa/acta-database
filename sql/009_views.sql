@@ -25,6 +25,7 @@ FROM public.empresa e;
 CREATE OR REPLACE VIEW pdca.vw_dim_ciclo AS
 SELECT
     c.id AS id_dim_ciclo,
+    c.id_empresa AS id_dim_empresa,
     c.titulo AS titulo_ciclo,
     c.status AS status_ciclo,
     c.data_inicio,
@@ -41,6 +42,24 @@ SELECT
     pa.prioridade AS prioridade_plano_acao
 FROM pdca.plano_acao pa;
 
+-- 5 (dimensão de datas)
+CREATE OR REPLACE VIEW public.vw_dim_data AS
+SELECT
+    d::DATE AS id_dim_data,
+    EXTRACT(YEAR FROM d)::INT AS ano,
+    EXTRACT(MONTH FROM d)::INT AS mes,
+    TO_CHAR(d, 'TMMonth') AS nome_mes,
+    EXTRACT(QUARTER FROM d)::INT AS trimestre,
+    TO_CHAR(d, 'TMDay') AS dia_semana,
+    EXTRACT(ISODOW FROM d)::INT AS num_dia_semana,
+    EXTRACT(DAY FROM d)::INT AS dia_mes,
+    CASE WHEN EXTRACT(ISODOW FROM d) IN (6, 7) THEN TRUE ELSE FALSE END AS eh_fim_semana
+FROM generate_series(
+    '2022-01-01'::DATE,
+    '2030-12-31'::DATE,
+    '1 day'::INTERVAL
+) AS d;
+
 
 --  ######################
 --  CAMADA DE FATOS
@@ -51,9 +70,10 @@ CREATE OR REPLACE VIEW pdca.vw_fato_tarefas AS
 SELECT
     t.id AS id_tarefa,
     t.id_responsavel AS id_dim_usuario,
+    pa.id AS id_dim_plano_acao,
     pa.id_ciclo AS id_dim_ciclo,
     u.id_empresa AS id_dim_empresa,
-    t.data_fim_prevista,
+    t.data_fim_prevista AS id_dim_data,
     t.status AS status_tarefa,
     t.prioridade AS prioridade_tarefa,
     1 AS qtd_tarefas,
@@ -70,6 +90,7 @@ SELECT
 
 FROM pdca.tarefa t
 LEFT JOIN pdca.plano_acao pa ON pa.id = t.id_plano_acao
+LEFT JOIN pdca.ciclo c ON c.id = pa.id_ciclo
 LEFT JOIN public.usuario_sistema u ON u.id = t.id_responsavel;
 
 -- 2 (fato de planos de ação)
@@ -78,6 +99,7 @@ SELECT
     pa.id AS id_plano_acao,
     pa.id_ciclo AS id_dim_ciclo,
     c.id_empresa AS id_dim_empresa,
+    pa.criado_em::DATE AS id_dim_data,
     1 AS qtd_planos_acao,
 
     COUNT(t.id) AS total_tarefas,
@@ -98,7 +120,7 @@ SELECT
     tr.id_ciclo AS id_dim_ciclo,
     u.id_empresa AS id_dim_empresa,
     tr.id AS id_treinamento,
-    tr.data_treinamento,
+    tr.data_treinamento AS id_dim_data,
 
     1 AS qtd_inscricoes,
     CASE WHEN ut.status IN ('CONFIRMADO', 'CONCLUIDO') THEN 1 ELSE 0 END AS qtd_realizados,
@@ -117,7 +139,7 @@ SELECT
     u.id_empresa AS id_dim_empresa,
     pa.id_ciclo AS id_dim_ciclo,
     a.id_tarefa,
-    a.enviado_em,
+    a.enviado_em AS id_dim_data,
 
     1 AS qtd_alertas,
     CASE WHEN a.lido_em IS NULL THEN 1 ELSE 0 END AS qtd_nao_lidos,
@@ -133,7 +155,7 @@ CREATE OR REPLACE VIEW auditoria.vw_fato_logs_auditoria AS
 SELECT
     la.id_usuario AS id_dim_usuario,
     u.id_empresa AS id_dim_empresa,
-    la.data_log::DATE AS data_log,
+    la.data_log::DATE AS id_dim_data,
     la.tabela,
 
     COUNT(*) AS total_operacoes,
