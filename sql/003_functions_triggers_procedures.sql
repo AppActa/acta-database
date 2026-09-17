@@ -557,19 +557,19 @@ BEGIN
         RAISE EXCEPTION 'Convite não pode ser criado para usuário já ativado';
     END IF;
 
-    UPDATE convite_usuario SET status = 'EXPIRADO'
-    WHERE id_usuario = NEW.id_usuario 
-    AND status = 'PENDENTE' 
+    UPDATE pdca.convite_usuario SET status = 'EXPIRADO'
+    WHERE id_usuario = NEW.id_usuario
+    AND status = 'PENDENTE'
     AND expira_em <= NOW();
 
     IF EXISTS (
-        SELECT 1 FROM convite_usuario
-        SET status = 'EXPIRADO'
+        SELECT 1
+        FROM convite_usuario
         WHERE id_usuario = NEW.id_usuario
         AND status = 'PENDENTE'
-        AND expirado_em > NOW(0)
+        AND expira_em > NOW()
     ) THEN
-        RAISE EXCEPTION 'Já existe convite pendente válido para esse usuário'
+        RAISE EXCEPTION 'Já existe convite pendente válido para este usuário';
     END IF;
 
     RETURN NEW;
