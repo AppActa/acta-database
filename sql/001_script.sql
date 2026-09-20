@@ -408,7 +408,7 @@ CREATE TABLE IF NOT EXISTS pdca.anexo (
     tipo_arquivo VARCHAR(150) NOT NULL,
     tamanho_arquivo BIGINT NOT NULL CHECK (tamanho_arquivo > 0),
     bucket_arquivo VARCHAR(100) NOT NULL DEFAULT 'acta-arquivos',
-    caminho_arquivo TEXT NOT NULL,
+    caminho_arquivo TEXT,
     status VARCHAR(30) NOT NULL DEFAULT 'PROCESSANDO' CHECK (status IN ('PROCESSANDO', 'ATIVO', 'ERRO', 'EXCLUIDO')),
     descricao TEXT,
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
