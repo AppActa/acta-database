@@ -17,16 +17,35 @@ engine_origem = create_engine(URL_ORIGEM)
 engine_destino = create_engine(URL_DESTINO)
 
 
+def criar_mapa_ids(ids_origem, ids_existentes, ids_gerados):
+    """Cria o mapa de IDs sem assumir que os IDs da origem são reutilizáveis."""
+    if len(ids_origem) != len(ids_gerados):
+        raise ValueError("A quantidade de IDs de origem e destino deve ser igual")
+    return dict(zip(ids_origem, ids_gerados))
+
 # inserir_df
-def inserir_dataframe(df, nome_tabela, schema):
-    """Insere o DataFrame no banco de destino definindo o usuário de auditoria na sessão."""
+def inserir_dataframe(df, nome_tabela, schema, sequence=None):
+    """Insere o DataFrame e retorna o mapa entre o ID de origem e o ID gerado."""
     if df.empty:
-        return 
+        return {}
 
     with engine_destino.begin() as conn:
-        
         conn.execute(text(f"SET LOCAL app.current_user_id = '0';"))
-        
+
+        ids_origem = df["id"].tolist() if "id" in df.columns else []
+        if sequence:
+            if not ids_origem:
+                raise ValueError("Inserção com sequence exige uma coluna id de origem")
+            ids_destino = conn.execute(
+                text("SELECT nextval(CAST(:sequence AS regclass)) "
+                     "FROM generate_series(1, :quantidade)"),
+                {"sequence": sequence, "quantidade": len(df)},
+            ).scalars().all()
+            df = df.copy()
+            df["id"] = ids_destino
+        else:
+            ids_destino = ids_origem
+
         df.to_sql(
             nome_tabela,
             con=conn,
@@ -34,6 +53,8 @@ def inserir_dataframe(df, nome_tabela, schema):
             if_exists="append",
             index=False
         )
+
+    return criar_mapa_ids(ids_origem, [], ids_destino)
 
 # Tratamento de dados
 
@@ -74,18 +95,15 @@ def carregar_empresa():
         "criado_em": pd.Timestamp.now()
     })
 
-    ids_existentes = pd.read_sql("SELECT id FROM public.empresa", engine_destino)["id"].tolist()
-
-    df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
     qtd_enviados = len(df_destino)
-    
-    if not df_destino.empty:
-        inserir_dataframe(df_destino, "empresa", "public")
+    mapa_ids = inserir_dataframe(
+        df_destino, "empresa", "public", sequence="public.empresa_id_seq"
+    )
 
     logging.info(f"Tabela empresa -> Encontrados: {qtd_encontrados} | Enviados: {qtd_enviados}")
 
     df_atualizado = pd.read_sql("SELECT id FROM public.empresa", engine_destino)
-    return {i: i for i in df_atualizado["id"]}
+    return mapa_ids
 
 
 # Tabelas usuario_sistema, colaborador, email_colaborador, telefone_colaborador
@@ -112,7 +130,7 @@ def carregar_usuarios_e_colaboradores(mapa_empresa_ids):
     # Tabela public.usuario_sistema
     df_usuario = pd.DataFrame({
         "id": df_colab["id_colaborador"],
-        "id_empresa": df_colab["id_empresa"],
+        "id_empresa": df_colab["id_empresa"].map(mapa_empresa_ids),
         "nome": (df_colab["nome"].str.strip() + " " + df_colab["sobrenome"].str.strip()),
         "email_login": df_colab["email_limpo"],
         "firebase_uid": None, 
@@ -121,18 +139,15 @@ def carregar_usuarios_e_colaboradores(mapa_empresa_ids):
         "criado_em": pd.Timestamp.now()
     })
 
-    ids_existentes = pd.read_sql("SELECT id FROM public.usuario_sistema", engine_destino)["id"].tolist()
-
-    df_usuario = df_usuario[~df_usuario["id"].isin(ids_existentes)]
-
-    if not df_usuario.empty:
-        inserir_dataframe(df_usuario, "usuario_sistema", "public")
+    mapa_usuario_ids = inserir_dataframe(
+        df_usuario, "usuario_sistema", "public", sequence="public.usuario_sistema_id_seq"
+    )
 
     # Tabela public.colaborador
     df_colaborador_detalhe = pd.DataFrame({
         "id": df_colab["id_colaborador"],
-        "id_empresa": df_colab["id_empresa"],
-        "id_usuario": df_colab["id_colaborador"],
+        "id_empresa": df_colab["id_empresa"].map(mapa_empresa_ids),
+        "id_usuario": df_colab["id_colaborador"].map(mapa_usuario_ids),
         "cpf": df_colab["cpf_limpo"],
         "nome": (df_colab["nome"].str.strip() + " " + df_colab["sobrenome"].str.strip()),
         "cargo": df_colab["cargo"].str.strip(),
@@ -144,39 +159,29 @@ def carregar_usuarios_e_colaboradores(mapa_empresa_ids):
         "criado_em": pd.Timestamp.now()
     })
 
-    ids_existentes = pd.read_sql("SELECT id FROM public.colaborador", engine_destino)["id"].tolist()
-
-    df_colaborador_detalhe = df_colaborador_detalhe[~df_colaborador_detalhe["id"].isin(ids_existentes)]
     qtd_colab_enviados = len(df_colaborador_detalhe)
-
-    if not df_colaborador_detalhe.empty:
-        inserir_dataframe(df_colaborador_detalhe, "colaborador", "public")
+    mapa_colaborador_destino = inserir_dataframe(
+        df_colaborador_detalhe,
+        "colaborador",
+        "public",
+        sequence="public.colaborador_id_seq",
+    )
 
     # Tabela public.email_colaborador
     df_email = pd.DataFrame({
-        "id_colaborador": df_colab["id_colaborador"],
+        "id_colaborador": df_colab["id_colaborador"].map(mapa_colaborador_destino),
         "email": df_colab["email_limpo"],
         "principal": True,
         "criado_em": pd.Timestamp.now()
     }).dropna(subset=["email"])
 
     if not df_email.empty:
-        dados_existentes = pd.read_sql("SELECT id_colaborador, email FROM public.email_colaborador", engine_destino)
-        emails_existentes = dados_existentes["email"].tolist()
-        colabs_existentes = dados_existentes["id_colaborador"].tolist()
-
-        df_email_filtrado = df_email[
-            (~df_email["email"].isin(emails_existentes)) & 
-            (~df_email["id_colaborador"].isin(colabs_existentes))
-        ]
-
-        if not df_email_filtrado.empty:
-            inserir_dataframe(df_email_filtrado, "email_colaborador", "public")
+        inserir_dataframe(df_email, "email_colaborador", "public")
 
 
     # Tabela public.telefone_colaborador
     df_tel = pd.DataFrame({
-        "id_colaborador": df_colab["id_colaborador"],
+        "id_colaborador": df_colab["id_colaborador"].map(mapa_colaborador_destino),
         "numero_telefone": df_colab["telefone_limpo"],
         "principal": True,
         "criado_em": pd.Timestamp.now()
@@ -185,22 +190,11 @@ def carregar_usuarios_e_colaboradores(mapa_empresa_ids):
     df_tel = df_tel[df_tel["numero_telefone"].str.len().between(10, 15)]
 
     if not df_tel.empty:
-        dados_tel_existentes = pd.read_sql("SELECT id_colaborador, numero_telefone FROM public.telefone_colaborador", engine_destino)
-        tels_existentes = dados_tel_existentes["numero_telefone"].tolist()
-        colabs_tel_existentes = dados_tel_existentes["id_colaborador"].tolist()
+        inserir_dataframe(df_tel, "telefone_colaborador", schema="public")
 
-        df_tel_filtrado = df_tel[
-            (~df_tel["numero_telefone"].isin(tels_existentes)) &
-            (~df_tel["id_colaborador"].isin(colabs_tel_existentes))
-        ]
+    logging.info(f"Tabela colaborador -> Encontrados: {qtd_encontrados} | Enviados: {qtd_colab_enviados}")
 
-        if not df_tel_filtrado.empty:
-            inserir_dataframe(df_tel_filtrado, "telefone_colaborador", schema="public")
-
-        logging.info(f"Tabela colaborador -> Encontrados: {qtd_encontrados} | Enviados: {qtd_colab_enviados}")
-
-        df_atualizado = pd.read_sql("SELECT id FROM public.colaborador", engine_destino)
-        return {i: i for i in df_atualizado["id"]}
+    return mapa_usuario_ids
 
 
 # Tabela pdca.ciclo
@@ -227,8 +221,8 @@ def carregar_ciclos(mapa_empresa_ids, mapa_colaborador_ids):
 
     df_destino = pd.DataFrame({
         "id": df["id_ciclo"],
-        "id_empresa": df["id_empresa"],
-        "id_responsavel": df["id_responsavel"],
+        "id_empresa": df["id_empresa"].map(mapa_empresa_ids),
+        "id_responsavel": df["id_responsavel"].map(mapa_colaborador_ids),
         "titulo": df["nome"].str.strip(),
         "descricao": df["descricao"].fillna("Sem descrição"),
         "status": df["status"].map(status_map).fillna("PLANEJAMENTO"),
@@ -237,15 +231,9 @@ def carregar_ciclos(mapa_empresa_ids, mapa_colaborador_ids):
         "criado_em": df["criado_em"]
     })
 
-    ids_existentes = pd.read_sql("SELECT id FROM pdca.ciclo", engine_destino)["id"].tolist()
-
-    df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
-
-    if not df_destino.empty:
-        inserir_dataframe(df_destino, "ciclo", schema="pdca")
-
-    df_atualizado = pd.read_sql("SELECT id FROM pdca.ciclo", engine_destino)
-    return {i: i for i in df_atualizado["id"]}
+    return inserir_dataframe(
+        df_destino, "ciclo", schema="pdca", sequence="pdca.ciclo_id_seq"
+    )
 
 # Tabela pdca.plano_acao
 
@@ -276,25 +264,19 @@ def carregar_planos_acao(mapa_ciclo_ids, mapa_colaborador_ids):
 
     df_destino = pd.DataFrame({
         "id": df["id_plano_acao"],
-        "id_ciclo": df["id_ciclo"],
+        "id_ciclo": df["id_ciclo"].map(mapa_ciclo_ids),
         "nome": df["nome"].str.strip(),
         "objetivo": df["descricao"],
         "prioridade": df["prioridade"].map(prioridade_map).fillna("MEDIA"),
         "status": df["status"].map(status_map).fillna("RASCUNHO"),
         "origem": "IMPORTACAO",
-        "criado_por": df["id_criador"],
+        "criado_por": df["id_criador"].map(mapa_colaborador_ids),
         "criado_em": pd.Timestamp.now()
     })
 
-    ids_existentes = pd.read_sql("SELECT id FROM pdca.plano_acao", engine_destino)["id"].tolist()
-
-    df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
-
-    if not df_destino.empty:
-        inserir_dataframe(df_destino, "plano_acao", schema="pdca")
-
-    df_atualizado = pd.read_sql("SELECT id FROM pdca.plano_acao", engine_destino)
-    return {i: i for i in df_atualizado["id"]}
+    return inserir_dataframe(
+        df_destino, "plano_acao", schema="pdca", sequence="pdca.plano_acao_id_seq"
+    )
 
 # Tabela pdca.plano_5w2h
 
@@ -313,8 +295,8 @@ def carregar_plano_5w2h(mapa_plano_ids, mapa_colaborador_ids):
 
     df_destino = pd.DataFrame({
         "id": df["id_plano_acao_5w2h"],
-        "id_plano_acao": df["id_plano_acao"],
-        "id_who_responsavel": df["who"],
+        "id_plano_acao": df["id_plano_acao"].map(mapa_plano_ids),
+        "id_who_responsavel": df["who"].map(mapa_colaborador_ids),
         "what_acao": df["what"],
         "why_justificativa": df["why"].fillna("Sem justificativa definida"),
         "where_local": df["where"].fillna("Não especificado"),
@@ -325,12 +307,12 @@ def carregar_plano_5w2h(mapa_plano_ids, mapa_colaborador_ids):
         "criado_em": pd.Timestamp.now()
     })
 
-    ids_existentes = pd.read_sql("SELECT id FROM pdca.plano_5w2h", engine_destino)["id"].tolist()
-
-    df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
-
-    if not df_destino.empty:
-        inserir_dataframe(df_destino, "plano_5w2h", schema="pdca")
+    inserir_dataframe(
+        df_destino,
+        "plano_5w2h",
+        schema="pdca",
+        sequence="pdca.plano_5w2h_id_seq",
+    )
 
 # Tabela pdca.meta
 
@@ -361,8 +343,8 @@ def carregar_metas(mapa_ciclo_ids, mapa_plano_ids):
 
     df_destino = pd.DataFrame({
         "id": df["id_meta"],
-        "id_ciclo": df["id_ciclo"],
-        "id_plano_acao": df["id_plano_acao"],
+        "id_ciclo": df["id_ciclo"].map(mapa_ciclo_ids),
+        "id_plano_acao": df["id_plano_acao"].map(mapa_plano_ids),
         "objetivo": (df["descricao_meta"].fillna("") + " - " + df["objetivo"].fillna("")).str.strip(" - "),
         "valor_base": 0.00,
         "valor_alvo": 0.00,
@@ -375,12 +357,7 @@ def carregar_metas(mapa_ciclo_ids, mapa_plano_ids):
         "criado_em": df["criado_em"]
     })
 
-    ids_existentes = pd.read_sql("SELECT id FROM pdca.meta", engine_destino)["id"].tolist()
-
-    df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
-
-    if not df_destino.empty:
-        inserir_dataframe(df_destino, "meta", schema="pdca")
+    inserir_dataframe(df_destino, "meta", schema="pdca", sequence="pdca.meta_id_seq")
 
 # Tabela pdca.tarefa
 
@@ -411,8 +388,8 @@ def carregar_tarefas(mapa_plano_ids, mapa_colaborador_ids):
 
     df_destino = pd.DataFrame({
         "id": df["id_tarefa"],
-        "id_plano_acao": df["id_plano_acao"], 
-        "id_responsavel": df["id_colaborador"],
+        "id_plano_acao": df["id_plano_acao"].map(mapa_plano_ids),
+        "id_responsavel": df["id_colaborador"].map(mapa_colaborador_ids),
         "titulo": df["titulo"].str.strip(),
         "descricao": df["descricao"].fillna("Sem descrição"),
         "prioridade": df["prioridade"].map(prioridade_map).fillna("MEDIA"),
@@ -422,16 +399,7 @@ def carregar_tarefas(mapa_plano_ids, mapa_colaborador_ids):
         "criado_em": pd.Timestamp.now()
     })
 
-    ids_existentes = pd.read_sql("SELECT id FROM pdca.tarefa", engine_destino)["id"].tolist()
-
-    planos_validos = pd.read_sql("SELECT id FROM pdca.plano_acao", engine_destino)["id"].tolist()
-
-    df_destino = df_destino[df_destino["id_plano_acao"].isin(planos_validos)]
-
-    df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
-
-    if not df_destino.empty:
-        inserir_dataframe(df_destino, "tarefa", schema="pdca")
+    inserir_dataframe(df_destino, "tarefa", schema="pdca", sequence="pdca.tarefa_id_seq")
 
 # Tabela pdca.problema
 
@@ -456,9 +424,9 @@ def carregar_problemas(mapa_ciclo_ids, mapa_colaborador_ids):
 
     df_destino = pd.DataFrame({
         "id": df["id_problema"],
-        "id_ciclo": df["id_ciclo"],
+        "id_ciclo": df["id_ciclo"].map(mapa_ciclo_ids),
         "id_problema_pai": None,
-        "criado_por": df["id_colaborador"],
+        "criado_por": df["id_colaborador"].map(mapa_colaborador_ids),
         "titulo": df["titulo"].str.strip(),
         "descricao": df["descricao"].str.strip(),
         "peso": 0.50, 
@@ -468,12 +436,9 @@ def carregar_problemas(mapa_ciclo_ids, mapa_colaborador_ids):
         "criado_em": df["encontrado_em"]
     })
 
-    ids_existentes = pd.read_sql("SELECT id FROM pdca.problema", engine_destino)["id"].tolist()
-
-    df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
-
-    if not df_destino.empty:
-        inserir_dataframe(df_destino, "problema", schema="pdca")
+    inserir_dataframe(
+        df_destino, "problema", schema="pdca", sequence="pdca.problema_id_seq"
+    )
 
 
 # ATUALIZAÇÃO DE SEQUÊNCIAS DO POSTGRES
@@ -517,6 +482,7 @@ def executar_rpa():
         logging.info("--- PROCESSO CONCLUÍDO COM SUCESSO ---")
     except Exception as e:
         logging.error(f"Falha na execução da migração: {str(e)}", exc_info=True)
+        raise
 
 
 if __name__ == "__main__":
