@@ -272,7 +272,7 @@ INSERT INTO auditoria.catalogo_dados (
 ('pdca', 'anexo', 'tipo_arquivo', 'VARCHAR(150)', FALSE, FALSE, NULL, TRUE, 'MIME type válido (PDF, Office, Imagens, CSV, Text).', 'INTERNO', 'Tipo MIME do arquivo.'),
 ('pdca', 'anexo', 'tamanho_arquivo', 'BIGINT', FALSE, FALSE, NULL, TRUE, 'Tamanho em bytes (> 0).', 'INTERNO', 'Tamanho do arquivo em bytes.'),
 ('pdca', 'anexo', 'bucket_arquivo', 'VARCHAR(100)', FALSE, FALSE, NULL, TRUE, 'Padrão acta-arquivos.', 'RESTRITO', 'Bucket de armazenamento do arquivo.'),
-('pdca', 'anexo', 'caminho_arquivo', 'TEXT', FALSE, FALSE, NULL, TRUE, 'Chave única associada ao bucket.', 'RESTRITO', 'Caminho ou chave do arquivo no armazenamento.'),
+('pdca', 'anexo', 'caminho_arquivo', 'TEXT', FALSE, FALSE, NULL, FALSE, 'Chave única associada ao bucket.', 'RESTRITO', 'Caminho ou chave do arquivo no armazenamento.'),
 ('pdca', 'anexo', 'status', 'VARCHAR(30)', FALSE, FALSE, NULL, TRUE, 'PROCESSANDO, ATIVO, ERRO, EXCLUIDO. Padrão PROCESSANDO.', 'INTERNO', 'Situação do processamento e disponibilidade do anexo.'),
 ('pdca', 'anexo', 'descricao', 'TEXT', FALSE, FALSE, NULL, FALSE, 'Detalhes adicionais.', 'INTERNO', 'Descrição opcional do anexo.'),
 ('pdca', 'anexo', 'criado_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, TRUE, 'Valor padrão NOW().', 'INTERNO', 'Data e hora de criação do registro.'),

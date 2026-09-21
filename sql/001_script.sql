@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS usuario_sistema (
     status VARCHAR(40) NOT NULL CHECK (status IN ('ATIVO', 'INATIVO', 'PENDENTE', 'BLOQUEADO', 'ARQUIVADO')),
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     atualizado_em TIMESTAMPTZ,
-    foto_url TEXT DEFAULT 'https://res.cloudinary.com/kcypohk3/image/upload/icone-de-perfil-de-avatar-padrao-imagem-de-usuario-de-midia-social-icone-de-avatar-cinza-silhueta-de-perfil-em-branco-ilustracao-vetorial_561158-3407',
-    foto_public_id TEXT DEFAULT 'icone-de-perfil-de-avatar-padrao-imagem-de-usuario-de-midia-social-icone-de-avatar-cinza-silhueta-de-perfil-em-branco-ilustracao-vetorial_561158-3407',
+    foto_url TEXT DEFAULT 'https://res.cloudinary.com/kcypohk3/image/upload/default-avatar',
+    foto_public_id TEXT DEFAULT 'default-avatar',
 
     CONSTRAINT ck_firebase_uid CHECK (status <> 'ATIVO' or firebase_uid IS NOT NULL)
 );
@@ -408,7 +408,7 @@ CREATE TABLE IF NOT EXISTS pdca.anexo (
     tipo_arquivo VARCHAR(150) NOT NULL,
     tamanho_arquivo BIGINT NOT NULL CHECK (tamanho_arquivo > 0),
     bucket_arquivo VARCHAR(100) NOT NULL DEFAULT 'acta-arquivos',
-    caminho_arquivo TEXT NOT NULL,
+    caminho_arquivo TEXT,
     status VARCHAR(30) NOT NULL DEFAULT 'PROCESSANDO' CHECK (status IN ('PROCESSANDO', 'ATIVO', 'ERRO', 'EXCLUIDO')),
     descricao TEXT,
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
