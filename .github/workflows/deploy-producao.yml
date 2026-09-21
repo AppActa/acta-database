@@ -24,17 +24,6 @@ jobs:
                 sudo apt-get update -y
                 sudo apt-get install -y postgresql-client
 
-          - name: Exclui banco atual
-            env:
-                DATABASE_URL: ${{ secrets.NEON_PROD_DATABASE_URL }}
-            run: |
-                psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
-                    DROP SCHEMA IF EXISTS public CASCADE;
-                    DROP SCHEMA IF EXISTS pdca CASCADE;
-                    DROP SCHEMA IF EXISTS auditoria CASCADE;
-                SQL
-
-
           - name: Aplica todos os scripts no banco em produção
             env:
                 DATABASE_URL: ${{ secrets.NEON_PROD_DATABASE_URL }}
@@ -60,3 +49,9 @@ jobs:
             env:
                 FULL_URL: ${{ secrets.NEON_PROD_DATABASE_URL }}
             run: papermill python/dataload.ipynb /tmp/dataload-output.ipynb
+        
+          - name: Executa RPA em produção
+            env:
+                FULL_URL: ${{ secrets.URL_SEGUNDO_BANCO }}
+                URL_PRIMEIRO_BANCO: ${{ secrets.PRIMEIRO_DATABASE_URL }}
+            run: papermill python/rpa.ipynb /tmp/rpa-output.ipynb
