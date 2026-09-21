@@ -17,6 +17,24 @@ engine_origem = create_engine(URL_ORIGEM)
 engine_destino = create_engine(URL_DESTINO)
 
 
+# inserir_df
+def inserir_dataframe(df, nome_tabela, schema):
+    """Insere o DataFrame no banco de destino definindo o usuário de auditoria na sessão."""
+    if df.empty:
+        return 
+
+    with engine_destino.begin() as conn:
+        
+        conn.execute(text(f"SET LOCAL app.current_user_id = '0';"))
+        
+        df.to_sql(
+            nome_tabela,
+            con=conn,
+            schema=schema,
+            if_exists="append",
+            index=False
+        )
+
 # Tratamento de dados
 
 def limpar_digitos(valor):
@@ -38,9 +56,11 @@ def sanitizar_email(email):
 def carregar_empresa():
     logging.info("Migrando Tabela: empresa -> public.empresa")
     df = pd.read_sql("SELECT * FROM empresa", engine_origem)
+    qtd_encontrados = len(df)
 
     if df.empty:
-        return
+        logging.info("Nenhuma empresa encontrada para migração.")
+        return {}
 
     tamanho_map = {"PEQUENA": "PEQUENA", "MEDIA": "MEDIA", "GRANDE": "GRANDE"}
 
@@ -57,19 +77,33 @@ def carregar_empresa():
     ids_existentes = pd.read_sql("SELECT id FROM public.empresa", engine_destino)["id"].tolist()
 
     df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
-
+    qtd_enviados = len(df_destino)
+    
     if not df_destino.empty:
-        df_destino.to_sql("empresa", engine_destino, schema="public", if_exists="append", index=False)
+        inserir_dataframe(df_destino, "empresa", "public")
+
+    logging.info(f"Tabela empresa -> Encontrados: {qtd_encontrados} | Enviados: {qtd_enviados}")
+
+    df_atualizado = pd.read_sql("SELECT id FROM public.empresa", engine_destino)
+    return {i: i for i in df_atualizado["id"]}
 
 
 # Tabelas usuario_sistema, colaborador, email_colaborador, telefone_colaborador
 
-def carregar_usuarios_e_colaboradores():
+def carregar_usuarios_e_colaboradores(mapa_empresa_ids):
     logging.info("Migrando: colaborador -> public.usuario_sistema, public.colaborador, public.email_colaborador, public.telefone_colaborador")
     df_colab = pd.read_sql("SELECT * FROM colaborador", engine_origem)
+    qtd_encontrados = len(df_colab)
 
     if df_colab.empty:
-        return
+        logging.info("Nenhum colaborador encontrado para migração.")
+        return {}
+
+    df_colab = df_colab[df_colab["id_empresa"].isin(mapa_empresa_ids.keys())]
+
+    if df_colab.empty:
+            logging.info("Nenhum colaborador encontrado para migração.")
+            return {}
 
     df_colab["cpf_limpo"] = df_colab["cpf"].apply(limpar_digitos).str.zfill(11)
     df_colab["telefone_limpo"] = df_colab["telefone"].apply(limpar_digitos)
@@ -92,7 +126,7 @@ def carregar_usuarios_e_colaboradores():
     df_usuario = df_usuario[~df_usuario["id"].isin(ids_existentes)]
 
     if not df_usuario.empty:
-        df_usuario.to_sql("usuario_sistema", engine_destino, schema="public", if_exists="append", index=False)
+        inserir_dataframe(df_usuario, "usuario_sistema", "public")
 
     # Tabela public.colaborador
     df_colaborador_detalhe = pd.DataFrame({
@@ -113,19 +147,12 @@ def carregar_usuarios_e_colaboradores():
     ids_existentes = pd.read_sql("SELECT id FROM public.colaborador", engine_destino)["id"].tolist()
 
     df_colaborador_detalhe = df_colaborador_detalhe[~df_colaborador_detalhe["id"].isin(ids_existentes)]
+    qtd_colab_enviados = len(df_colaborador_detalhe)
 
     if not df_colaborador_detalhe.empty:
-        df_colaborador_detalhe.to_sql("colaborador", engine_destino, schema="public", if_exists="append", index=False)
+        inserir_dataframe(df_colaborador_detalhe, "colaborador", "public")
 
     # Tabela public.email_colaborador
-    df_email = pd.DataFrame({
-        "id_colaborador": df_colab["id_colaborador"],
-        "email": df_colab["email_limpo"],
-        "principal": True,
-        "criado_em": pd.Timestamp.now()
-    })
-
-# Tabela public.email_colaborador
     df_email = pd.DataFrame({
         "id_colaborador": df_colab["id_colaborador"],
         "email": df_colab["email_limpo"],
@@ -144,7 +171,7 @@ def carregar_usuarios_e_colaboradores():
         ]
 
         if not df_email_filtrado.empty:
-            df_email_filtrado.to_sql("email_colaborador", engine_destino, schema="public", if_exists="append", index=False)
+            inserir_dataframe(df_email_filtrado, "email_colaborador", "public")
 
 
     # Tabela public.telefone_colaborador
@@ -168,17 +195,29 @@ def carregar_usuarios_e_colaboradores():
         ]
 
         if not df_tel_filtrado.empty:
-            df_tel_filtrado.to_sql("telefone_colaborador", engine_destino, schema="public", if_exists="append", index=False)
+            inserir_dataframe(df_tel_filtrado, "telefone_colaborador", schema="public")
+
+        logging.info(f"Tabela colaborador -> Encontrados: {qtd_encontrados} | Enviados: {qtd_colab_enviados}")
+
+        df_atualizado = pd.read_sql("SELECT id FROM public.colaborador", engine_destino)
+        return {i: i for i in df_atualizado["id"]}
 
 
 # Tabela pdca.ciclo
 
-def carregar_ciclos():
+def carregar_ciclos(mapa_empresa_ids, mapa_colaborador_ids):
     logging.info("Migrando Tabela: ciclo -> pdca.ciclo")
     df = pd.read_sql("SELECT * FROM ciclo", engine_origem)
 
     if df.empty:
-        return
+        logging.info("Nenhum ciclo encontrado para migração.")
+        return {}
+
+    df = df[df["id_empresa"].isin(mapa_empresa_ids.keys()) & df["id_responsavel"].isin(mapa_colaborador_ids.keys())]
+
+    if df.empty:
+        logging.info("Nenhum ciclo encontrado para migração.")
+        return {}
 
     status_map = {
         "NAO_INICIADO": "PLANEJAMENTO",
@@ -203,16 +242,25 @@ def carregar_ciclos():
     df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
 
     if not df_destino.empty:
-        df_destino.to_sql("ciclo", engine_destino, schema="pdca", if_exists="append", index=False)
+        inserir_dataframe(df_destino, "ciclo", schema="pdca")
+
+    df_atualizado = pd.read_sql("SELECT id FROM pdca.ciclo", engine_destino)
+    return {i: i for i in df_atualizado["id"]}
 
 # Tabela pdca.plano_acao
 
-def carregar_planos_acao():
+def carregar_planos_acao(mapa_ciclo_ids, mapa_colaborador_ids):
     logging.info("Migrando Tabela: plano_acao -> pdca.plano_acao")
     df = pd.read_sql("SELECT * FROM plano_acao", engine_origem)
 
     if df.empty:
-        return
+        logging.info("Nenhum plano de ação encontrado para migração.")
+        return {}
+
+    df = df[df["id_ciclo"].isin(mapa_ciclo_ids.keys()) & df["id_criador"].isin(mapa_colaborador_ids.keys())]
+    if df.empty:
+        logging.info("Nenhum plano de ação encontrado para migração.")
+        return {}
 
     status_map = {
         "NAO_INICIADO": "RASCUNHO",
@@ -243,15 +291,24 @@ def carregar_planos_acao():
     df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
 
     if not df_destino.empty:
-        df_destino.to_sql("plano_acao", engine_destino, schema="pdca", if_exists="append", index=False)
+        inserir_dataframe(df_destino, "plano_acao", schema="pdca")
+
+    df_atualizado = pd.read_sql("SELECT id FROM pdca.plano_acao", engine_destino)
+    return {i: i for i in df_atualizado["id"]}
 
 # Tabela pdca.plano_5w2h
 
-def carregar_plano_5w2h():
+def carregar_plano_5w2h(mapa_plano_ids, mapa_colaborador_ids):
     logging.info("Migrando Tabela: plano_acao5w2h -> pdca.plano_5w2h")
     df = pd.read_sql("SELECT * FROM plano_acao5w2h", engine_origem)
 
     if df.empty:
+        logging.info("Nenhum plano 5W2H encontrado para migração.")
+        return
+
+    df = df[df["id_plano_acao"].isin(mapa_plano_ids.keys()) & df["who"].isin(mapa_colaborador_ids.keys())]
+    if df.empty:
+        logging.info("Nenhum plano 5W2H encontrado para migração.")
         return
 
     df_destino = pd.DataFrame({
@@ -273,15 +330,21 @@ def carregar_plano_5w2h():
     df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
 
     if not df_destino.empty:
-        df_destino.to_sql("plano_5w2h", engine_destino, schema="pdca", if_exists="append", index=False)
+        inserir_dataframe(df_destino, "plano_5w2h", schema="pdca")
 
 # Tabela pdca.meta
 
-def carregar_metas():
+def carregar_metas(mapa_ciclo_ids, mapa_plano_ids):
     logging.info("Migrando Tabela: meta -> pdca.meta")
     df = pd.read_sql("SELECT * FROM meta", engine_origem)
 
     if df.empty:
+        logging.info("Nenhuma meta encontrada para migração.")
+        return
+
+    df = df[df["id_ciclo"].isin(mapa_ciclo_ids.keys()) & df["id_plano_acao"].isin(mapa_plano_ids.keys())]
+    if df.empty:
+        logging.info("Nenhuma meta encontrada para migração.")
         return
 
     status_map = {
@@ -317,15 +380,21 @@ def carregar_metas():
     df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
 
     if not df_destino.empty:
-        df_destino.to_sql("meta", engine_destino, schema="pdca", if_exists="append", index=False)
+        inserir_dataframe(df_destino, "meta", schema="pdca")
 
 # Tabela pdca.tarefa
 
-def carregar_tarefas():
+def carregar_tarefas(mapa_plano_ids, mapa_colaborador_ids):
     logging.info("Migrando Tabela: tarefa -> pdca.tarefa")
     df = pd.read_sql("SELECT * FROM tarefa", engine_origem)
 
     if df.empty:
+        logging.info("Nenhuma tarefa encontrada para migração.")
+        return
+
+    df = df[df["id_plano_acao"].isin(mapa_plano_ids.keys()) & df["id_colaborador"].isin(mapa_colaborador_ids.keys())]
+    if df.empty:
+        logging.info("Nenhuma tarefa encontrada para migração.")
         return
 
     status_map = {
@@ -355,18 +424,28 @@ def carregar_tarefas():
 
     ids_existentes = pd.read_sql("SELECT id FROM pdca.tarefa", engine_destino)["id"].tolist()
 
+    planos_validos = pd.read_sql("SELECT id FROM pdca.plano_acao", engine_destino)["id"].tolist()
+
+    df_destino = df_destino[df_destino["id_plano_acao"].isin(planos_validos)]
+
     df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
 
     if not df_destino.empty:
-        df_destino.to_sql("tarefa", engine_destino, schema="pdca", if_exists="append", index=False)
+        inserir_dataframe(df_destino, "tarefa", schema="pdca")
 
 # Tabela pdca.problema
 
-def carregar_problemas():
+def carregar_problemas(mapa_ciclo_ids, mapa_colaborador_ids):
     logging.info("Migrando Tabela: problema -> pdca.problema")
     df = pd.read_sql("SELECT * FROM problema", engine_origem)
 
     if df.empty:
+        logging.info("Nenhum problema encontrado para migração.")
+        return
+
+    df = df[df["id_ciclo"].isin(mapa_ciclo_ids.keys()) & df["id_colaborador"].isin(mapa_colaborador_ids.keys())]
+    if df.empty:
+        logging.info("Nenhum problema encontrado para migração.")
         return
 
     status_map = {
@@ -394,7 +473,7 @@ def carregar_problemas():
     df_destino = df_destino[~df_destino["id"].isin(ids_existentes)]
 
     if not df_destino.empty:
-        df_destino.to_sql("problema", engine_destino, schema="pdca", if_exists="append", index=False)
+        inserir_dataframe(df_destino, "problema", schema="pdca")
 
 
 # ATUALIZAÇÃO DE SEQUÊNCIAS DO POSTGRES
@@ -422,19 +501,22 @@ def atualizar_sequences():
 
 def executar_rpa():
     try:
-        logging.info("--- INICIANDO PROCESSO DE ETL/RPA ---")
-        carregar_empresa()
-        carregar_usuarios_e_colaboradores()
-        carregar_ciclos()
-        carregar_planos_acao()
-        carregar_plano_5w2h()
-        carregar_metas()
-        carregar_tarefas()
-        carregar_problemas()
+        logging.info("--- INICIANDO PROCESSO DE RPA ---")
+
+        mapa_empresa_ids = carregar_empresa()
+        mapa_colaborador_ids = carregar_usuarios_e_colaboradores(mapa_empresa_ids)
+        mapa_ciclo_ids = carregar_ciclos(mapa_empresa_ids, mapa_colaborador_ids)
+        mapa_plano_ids = carregar_planos_acao(mapa_ciclo_ids, mapa_colaborador_ids)
+        
+        carregar_plano_5w2h(mapa_plano_ids, mapa_colaborador_ids)
+        carregar_metas(mapa_ciclo_ids, mapa_plano_ids)
+        carregar_tarefas(mapa_plano_ids, mapa_colaborador_ids)
+        carregar_problemas(mapa_ciclo_ids, mapa_colaborador_ids)
+
         atualizar_sequences()
         logging.info("--- PROCESSO CONCLUÍDO COM SUCESSO ---")
     except Exception as e:
-        logging.error(f"Falha na execução da migração: {str(e)}")
+        logging.error(f"Falha na execução da migração: {str(e)}", exc_info=True)
 
 
 if __name__ == "__main__":
