@@ -95,6 +95,7 @@ COMMENT ON COLUMN pdca.ciclo.id IS 'Identificador unico do ciclo PDCA.';
 COMMENT ON COLUMN pdca.ciclo.id_empresa IS 'Empresa dona do ciclo.';
 COMMENT ON COLUMN pdca.ciclo.id_responsavel IS 'Usuario responsavel pelo ciclo.';
 COMMENT ON COLUMN pdca.ciclo.id_ishikawa_mongo IS 'Identificador do diagrama de Ishikawa armazenado em base externa.';
+COMMENT ON COLUMN pdca.ciclo.icone_url IS 'URL do ícone no Cloudinary.';
 COMMENT ON COLUMN pdca.ciclo.titulo IS 'Titulo do ciclo PDCA.';
 COMMENT ON COLUMN pdca.ciclo.descricao IS 'Descricao do objetivo e contexto do ciclo.';
 COMMENT ON COLUMN pdca.ciclo.status IS 'Etapa ou situacao atual do ciclo.';

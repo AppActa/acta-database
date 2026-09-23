@@ -124,6 +124,7 @@ CREATE TABLE IF NOT EXISTS pdca.ciclo (
     id_empresa BIGINT NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
     id_responsavel BIGINT NOT NULL REFERENCES usuario_sistema(id),
     id_ishikawa_mongo UUID,
+    icone_url TEXT,
     titulo VARCHAR(160) NOT NULL,
     descricao TEXT NOT NULL,
     status VARCHAR(40) NOT NULL CHECK (status IN ('PLANEJAMENTO', 'EXECUCAO', 'VERIFICACAO', 'PADRONIZACAO', 'CONCLUIDO', 'CANCELADO', 'PAUSADO')),
