@@ -119,10 +119,17 @@ CREATE TABLE IF NOT EXISTS telefone_colaborador (
 );
 
 -- Schema PDCA
+CREATE TABLE IF NOT EXISTS pdca.icone (
+    id BIGSERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL UNIQUE,
+    url_icone TEXT NOT NULL,
+
+);
 CREATE TABLE IF NOT EXISTS pdca.ciclo (
     id BIGSERIAL PRIMARY KEY,
     id_empresa BIGINT NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
     id_responsavel BIGINT NOT NULL REFERENCES usuario_sistema(id),
+    id_icone BIGINT REFERENCES pdca.icone(id),
     id_ishikawa_mongo UUID,
     titulo VARCHAR(160) NOT NULL,
     descricao TEXT NOT NULL,
