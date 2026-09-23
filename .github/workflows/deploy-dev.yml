@@ -64,7 +64,7 @@ jobs:
           - name: Executa dataload Python
             env:
                 FULL_URL: postgresql+psycopg2://acta_test:acta_test@localhost:5432/acta_test
-            run: papermill python/dataload.ipynb /tmp/dataload-output.ipynb
+            run: papermill python/dataload.py /tmp/dataload-output.py
 
 
           - name: Comenta resultado na Pull Request

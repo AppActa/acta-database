@@ -54,4 +54,4 @@ jobs:
             env:
                 FULL_URL: ${{ secrets.URL_SEGUNDO_BANCO }}
                 URL_PRIMEIRO_BANCO: ${{ secrets.PRIMEIRO_DATABASE_URL }}
-            run: papermill python/rpa.ipynb /tmp/rpa-output.ipynb
+            run: papermill python/rpa.py /tmp/rpa-output.py
