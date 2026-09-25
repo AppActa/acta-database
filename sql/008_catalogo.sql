@@ -44,6 +44,7 @@ INSERT INTO auditoria.catalogo_dados (
 ('public', 'colaborador', 'id_usuario', 'BIGINT', FALSE, TRUE, 'public.usuario_sistema(id)', TRUE, 'ON DELETE CASCADE. Chave única.', 'INTERNO', 'Usuário do sistema associado ao colaborador.'),
 ('public', 'colaborador', 'cpf', 'CHAR(11)', FALSE, FALSE, NULL, TRUE, 'Exatamente 11 dígitos numéricos. Único no sistema.', 'SENSIVEL', 'CPF do colaborador, armazenado apenas com números.'),
 ('public', 'colaborador', 'nome', 'VARCHAR(160)', FALSE, FALSE, NULL, TRUE, 'Nome do colaborador.', 'SENSIVEL', 'Nome do colaborador.'),
+('public', 'colaborador', 'nickname', 'VARCHAR(160)', FALSE, FALSE, NULL, TRUE, 'Nome utilizado para exibição no sistema.', 'SENSIVEL', 'Nome de exibição do colaborador.'),
 ('public', 'colaborador', 'cargo', 'VARCHAR(100)', FALSE, FALSE, NULL, TRUE, 'Cargo ocupado.', 'INTERNO', 'Cargo ocupado pelo colaborador.'),
 ('public', 'colaborador', 'area', 'VARCHAR(100)', FALSE, FALSE, NULL, TRUE, 'Área ou departamento.', 'INTERNO', 'Área ou departamento do colaborador.'),
 ('public', 'colaborador', 'data_nascimento', 'DATE', FALSE, FALSE, NULL, TRUE, 'O colaborador deve ter no mínimo 18 anos.', 'SENSIVEL', 'Data de nascimento do colaborador.'),

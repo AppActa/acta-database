@@ -38,6 +38,7 @@ COMMENT ON COLUMN public.colaborador.id_empresa IS 'Empresa a qual o colaborador
 COMMENT ON COLUMN public.colaborador.id_usuario IS 'Usuario do sistema associado ao colaborador.';
 COMMENT ON COLUMN public.colaborador.cpf IS 'CPF do colaborador, armazenado apenas com numeros.';
 COMMENT ON COLUMN public.colaborador.nome IS 'Nome completo do colaborador.';
+COMMENT ON COLUMN public.colaborador.nickname IS 'Nome de exibicao do colaborador.';
 COMMENT ON COLUMN public.colaborador.cargo IS 'Cargo ocupado pelo colaborador.';
 COMMENT ON COLUMN public.colaborador.area IS 'Area ou departamento do colaborador.';
 COMMENT ON COLUMN public.colaborador.data_nascimento IS 'Data de nascimento do colaborador.';

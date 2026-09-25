@@ -315,6 +315,30 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- 13 (valida se o ícone do ciclo está entre as URLs permitidas)
+CREATE OR REPLACE FUNCTION pdca.fn_validar_icone_ciclo()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.icone_url IS NULL OR NEW.icone_url NOT IN (
+        'https://res.cloudinary.com/kcypohk3/image/upload/v1790336465/wallet-icon.svg',
+        'https://res.cloudinary.com/kcypohk3/image/upload/v1790336454/target-icon.svg',
+        'https://res.cloudinary.com/kcypohk3/image/upload/v1790336437/shield-icon.svg',
+        'https://res.cloudinary.com/kcypohk3/image/upload/v1790336437/settings-icon.svg',
+        'https://res.cloudinary.com/kcypohk3/image/upload/v1790336437/people-icon.svg',
+        'https://res.cloudinary.com/kcypohk3/image/upload/v1790336437/headphone-icon.svg',
+        'https://res.cloudinary.com/kcypohk3/image/upload/v1790336437/folder-icon.svg',
+        'https://res.cloudinary.com/kcypohk3/image/upload/v1790336437/database-icon.svg',
+        'https://res.cloudinary.com/kcypohk3/image/upload/v1790336437/code-icon.svg',
+        'https://res.cloudinary.com/kcypohk3/image/upload/v1790336437/clock-icon.svg',
+        'https://res.cloudinary.com/kcypohk3/image/upload/v1790336437/box-icon.svg'
+    ) THEN
+        RAISE EXCEPTION 'URL de ícone do ciclo inválida.';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- 14 (etapas de verificação antes de uma tarefa ser iniciada)
 CREATE OR REPLACE FUNCTION pdca.fn_pode_iniciar_tarefa(tarefa_id BIGINT, usuario_id BIGINT)
 RETURNS BOOLEAN AS $$
@@ -576,6 +600,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- 21 (preenche o nickname com o nome do colaborador quando não for informado)
+CREATE OR REPLACE FUNCTION public.fn_preencher_nickname_colaborador()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.nickname IS NULL THEN
+        NEW.nickname := NEW.nome;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 --  ######################
 --  TRIGGERS
 --  ######################
@@ -756,6 +792,18 @@ CREATE OR REPLACE TRIGGER tg_preparar_criacao_convite
 BEFORE INSERT ON public.convite_usuario
 FOR EACH ROW 
 EXECUTE FUNCTION public.fn_preparar_criacao_convite();
+
+-- 22 (trigger que conecta a função fn_validar_icone_ciclo() à tabela ciclo)
+CREATE OR REPLACE TRIGGER tg_validar_icone_ciclo
+BEFORE INSERT OR UPDATE OF icone_url ON pdca.ciclo
+FOR EACH ROW
+EXECUTE FUNCTION pdca.fn_validar_icone_ciclo();
+
+-- 23 (trigger que preenche o nickname ao criar um colaborador)
+CREATE OR REPLACE TRIGGER tg_preencher_nickname_colaborador
+BEFORE INSERT ON public.colaborador
+FOR EACH ROW
+EXECUTE FUNCTION public.fn_preencher_nickname_colaborador();
 
 --  ######################
 --  PROCEDURES
