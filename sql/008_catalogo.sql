@@ -103,7 +103,7 @@ INSERT INTO auditoria.catalogo_dados (
 ('pdca', 'ciclo', 'id_empresa', 'BIGINT', FALSE, TRUE, 'public.empresa(id)', TRUE, 'ON DELETE CASCADE.', 'INTERNO', 'Empresa dona do ciclo.'),
 ('pdca', 'ciclo', 'id_responsavel', 'BIGINT', FALSE, TRUE, 'public.usuario_sistema(id)', TRUE, 'Usuário responsável.', 'INTERNO', 'Usuário responsável pelo ciclo.'),
 ('pdca', 'ciclo', 'id_ishikawa_mongo', 'UUID', FALSE, FALSE, NULL, FALSE, 'Chave de referência externa (MongoDB).', 'INTERNO', 'Identificador do diagrama de Ishikawa armazenado em base externa.'),
-('pdca', 'ciclo', 'icone_url', TEXT, FALSE, FALSE, NULL, FALSE, 'URL única associada a URL do ícone no bucket.', 'PUBLICO', 'URL do ícone no Cloudinary.'),
+('pdca', 'ciclo', 'icone_url', 'TEXT', FALSE, FALSE, NULL, FALSE, 'URL única associada a URL do ícone no bucket.', 'PUBLICO', 'URL do ícone no Cloudinary.'),
 ('pdca', 'ciclo', 'titulo', 'VARCHAR(160)', FALSE, FALSE, NULL, TRUE, 'Título do ciclo.', 'INTERNO', 'Título do ciclo PDCA.'),
 ('pdca', 'ciclo', 'descricao', 'TEXT', FALSE, FALSE, NULL, TRUE, 'Descrição detalhada.', 'INTERNO', 'Descrição do objetivo e contexto do ciclo.'),
 ('pdca', 'ciclo', 'status', 'VARCHAR(40)', FALSE, FALSE, NULL, TRUE, 'PLANEJAMENTO, EXECUCAO, VERIFICACAO, PADRONIZACAO, CONCLUIDO, CANCELADO, PAUSADO.', 'INTERNO', 'Etapa ou situação atual do ciclo.'),
