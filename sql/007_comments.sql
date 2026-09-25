@@ -38,6 +38,7 @@ COMMENT ON COLUMN public.colaborador.id_empresa IS 'Empresa a qual o colaborador
 COMMENT ON COLUMN public.colaborador.id_usuario IS 'Usuario do sistema associado ao colaborador.';
 COMMENT ON COLUMN public.colaborador.cpf IS 'CPF do colaborador, armazenado apenas com numeros.';
 COMMENT ON COLUMN public.colaborador.nome IS 'Nome completo do colaborador.';
+COMMENT ON COLUMN public.colaborador.nickname IS 'Nome de exibicao do colaborador.';
 COMMENT ON COLUMN public.colaborador.cargo IS 'Cargo ocupado pelo colaborador.';
 COMMENT ON COLUMN public.colaborador.area IS 'Area ou departamento do colaborador.';
 COMMENT ON COLUMN public.colaborador.data_nascimento IS 'Data de nascimento do colaborador.';
@@ -95,6 +96,7 @@ COMMENT ON COLUMN pdca.ciclo.id IS 'Identificador unico do ciclo PDCA.';
 COMMENT ON COLUMN pdca.ciclo.id_empresa IS 'Empresa dona do ciclo.';
 COMMENT ON COLUMN pdca.ciclo.id_responsavel IS 'Usuario responsavel pelo ciclo.';
 COMMENT ON COLUMN pdca.ciclo.id_ishikawa_mongo IS 'Identificador do diagrama de Ishikawa armazenado em base externa.';
+COMMENT ON COLUMN pdca.ciclo.icone_url IS 'URL do ícone no Cloudinary.';
 COMMENT ON COLUMN pdca.ciclo.titulo IS 'Titulo do ciclo PDCA.';
 COMMENT ON COLUMN pdca.ciclo.descricao IS 'Descricao do objetivo e contexto do ciclo.';
 COMMENT ON COLUMN pdca.ciclo.status IS 'Etapa ou situacao atual do ciclo.';
