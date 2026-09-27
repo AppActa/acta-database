@@ -581,7 +581,7 @@ BEGIN
         RAISE EXCEPTION 'Convite não pode ser criado para usuário já ativado';
     END IF;
 
-    UPDATE pdca.convite_usuario SET status = 'EXPIRADO'
+    UPDATE public.convite_usuario SET status = 'EXPIRADO'
     WHERE id_usuario = NEW.id_usuario
     AND status = 'PENDENTE'
     AND expira_em <= NOW();
