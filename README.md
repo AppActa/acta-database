@@ -60,16 +60,14 @@ python -m pip install -r .\python\requirements.txt
 As conexões são informadas por variáveis de ambiente:
 
 ```env
-FULL_URL=postgresql+psycopg2://usuario:senha@localhost:5432/acta
-URL_PRIMEIRO_BANCO=postgresql+psycopg2://usuario:senha@localhost:5432/acta_primeiro
 URL_SEGUNDO_BANCO=postgresql+psycopg2://usuario:senha@localhost:5432/acta
+URL_PRIMEIRO_BANCO=postgresql+psycopg2://usuario:senha@localhost:5432/acta_primeiro
 ```
 
 | Variável | Uso |
 | --- | --- |
-| `FULL_URL` | Conexão SQLAlchemy usada pelo `dataload.ipynb` |
+| `URL_SEGUNDO_BANCO` | Banco do segundo ano normalizado usado pelo `dataload.ipynb` e como destino do RPA |
 | `URL_PRIMEIRO_BANCO` | [Banco do primeiro ano](https://github.com/AppActa/acta-primeiro/blob/main/src/main/resources/sql/script_banco.sql) usado como origem da migração |
-| `URL_SEGUNDO_BANCO` | Banco do segundo ano normalizado usado como destino da migração |
 
 Nunca versione senhas ou URLs reais de conexão. O [`.env.example`](.env.example) contém apenas valores de referência.
 
@@ -100,7 +98,7 @@ Get-ChildItem .\sql -Filter *.sql |
 O notebook cria empresas, pessoas e registros relacionados ao ciclo PDCA, mantendo as dependências entre as tabelas:
 
 ```powershell
-$env:FULL_URL = "postgresql+psycopg2://usuario:senha@localhost:5432/acta"
+$env:URL_SEGUNDO_BANCO = "postgresql+psycopg2://usuario:senha@localhost:5432/acta"
 python -m papermill .\python\dataload.ipynb "$env:TEMP\acta-dataload-output.ipynb" --log-output
 ```
 

@@ -47,11 +47,11 @@ jobs:
 
           - name: Executa dataload Python em produção
             env:
-                FULL_URL: ${{ secrets.NEON_PROD_DATABASE_URL }}
+                URL_SEGUNDO_BANCO: ${{ secrets.NEON_PROD_DATABASE_URL }}
             run: papermill python/dataload.ipynb /tmp/dataload-output.ipynb
         
           - name: Executa RPA em produção
             env:
-                FULL_URL: ${{ secrets.URL_SEGUNDO_BANCO }}
+                URL_SEGUNDO_BANCO: ${{ secrets.NEON_PROD_DATABASE_URL }}
                 URL_PRIMEIRO_BANCO: ${{ secrets.PRIMEIRO_DATABASE_URL }}
-            run: papermill python/rpa.py /tmp/rpa-output.py
+            run: python python/rpa.py
