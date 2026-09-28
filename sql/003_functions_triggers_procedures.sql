@@ -57,8 +57,8 @@ CREATE OR REPLACE FUNCTION auditoria.fn_log_status()
 RETURNS TRIGGER AS $$
 DECLARE
     usuario BIGINT;
+    registro_id BIGINT;
 BEGIN
-
     IF OLD.status IS DISTINCT FROM NEW.status THEN
         
         BEGIN
@@ -70,9 +70,15 @@ BEGIN
         IF usuario IS NULL THEN
             RAISE EXCEPTION 'Usuário não recebido pelo backend';
         END IF;
+        -- usuario_treinamento usa chave composta e não possui coluna id
+        IF TG_TABLE_NAME = 'usuario_treinamento' THEN
+            registro_id := NEW.id_treinamento;
+        ELSE
+            registro_id := NEW.id;
+        END IF;
 
         INSERT INTO auditoria.log_status (id_usuario, id_registro, tabela, status_anterior, status_atual, data_log) VALUES (
-        usuario, NEW.id, TG_TABLE_NAME, OLD.status, NEW.status, NOW());
+        usuario, registro_id, TG_TABLE_NAME, OLD.status, NEW.status, NOW());
     END IF;
 
     RETURN NEW;
