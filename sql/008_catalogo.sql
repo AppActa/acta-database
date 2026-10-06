@@ -205,6 +205,8 @@ INSERT INTO auditoria.catalogo_dados (
 ('pdca', 'plano_5w2h', 'when_fim', 'DATE', FALSE, FALSE, NULL, TRUE, 'Data limite (When). Deve ser >= when_inicio se este for informado.', 'INTERNO', 'Data de fim planejada da ação.'),
 ('pdca', 'plano_5w2h', 'how_modo_execucao', 'TEXT', FALSE, FALSE, NULL, TRUE, 'Método (How).', 'INTERNO', 'Como a ação será executada.'),
 ('pdca', 'plano_5w2h', 'how_much_custo', 'NUMERIC(12,2)', FALSE, FALSE, NULL, TRUE, 'Custo monetário (How much). Deve ser >= 0.', 'SENSIVEL', 'Custo estimado da ação.'),
+('pdca', 'plano_5w2h', 'colaboradores_podem_editar', 'BOOLEAN', FALSE, FALSE, NULL, TRUE, 'Valor padrão FALSE. Controla a edição por colaboradores do ciclo.', 'INTERNO', 'Indica se colaboradores do ciclo podem editar o 5W2H.'),
+('pdca', 'plano_5w2h', 'id_ultima_alteracao_por', 'BIGINT', FALSE, TRUE, 'public.usuario_sistema(id)', FALSE, 'Usuário que realizou a última alteração no 5W2H.', 'INTERNO', 'Identifica o usuário responsável pela última alteração.'),
 ('pdca', 'plano_5w2h', 'criado_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, TRUE, 'Valor padrão NOW().', 'INTERNO', 'Data e hora de criação do registro.'),
 ('pdca', 'plano_5w2h', 'atualizado_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, FALSE, 'Data da última edição.', 'INTERNO', 'Data e hora da última atualização do registro.'),
 
