@@ -238,8 +238,6 @@ CREATE TABLE IF NOT EXISTS pdca.plano_5w2h (
     when_fim DATE NOT NULL,
     how_modo_execucao TEXT NOT NULL,
     how_much_custo NUMERIC(12,2) NOT NULL CHECK (how_much_custo >= 0),
-    colaboradores_podem_editar BOOLEAN NOT NULL DEFAULT FALSE,
-    id_ultima_alteracao_por BIGINT REFERENCES usuario_sistema(id),
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     atualizado_em TIMESTAMPTZ,
     CONSTRAINT plano_5w2h_datas_check CHECK (when_inicio IS NULL OR when_fim >= when_inicio)
