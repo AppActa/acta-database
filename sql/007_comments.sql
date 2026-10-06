@@ -198,8 +198,6 @@ COMMENT ON COLUMN pdca.plano_5w2h.when_inicio IS 'Data de inicio da acao.';
 COMMENT ON COLUMN pdca.plano_5w2h.when_fim IS 'Data de fim planejada da acao.';
 COMMENT ON COLUMN pdca.plano_5w2h.how_modo_execucao IS 'Como a acao sera executada.';
 COMMENT ON COLUMN pdca.plano_5w2h.how_much_custo IS 'Custo estimado da acao.';
-COMMENT ON COLUMN pdca.plano_5w2h.colaboradores_podem_editar IS 'Indica se colaboradores do ciclo podem editar o 5W2H.';
-COMMENT ON COLUMN pdca.plano_5w2h.id_ultima_alteracao_por IS 'Usuario que realizou a ultima alteracao no 5W2H.';
 COMMENT ON COLUMN pdca.plano_5w2h.criado_em IS 'Data e hora de criacao do registro.';
 COMMENT ON COLUMN pdca.plano_5w2h.atualizado_em IS 'Data e hora da ultima atualizacao do registro.';
 
