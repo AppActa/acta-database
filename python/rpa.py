@@ -377,8 +377,35 @@ def carregar_tarefas(mapa_plano_ids, mapa_colaborador_ids):
     status_map = {
         "NAO_INICIADO": "PENDENTE",
         "INICIADO": "EM_ANDAMENTO",
-        "FINALIZADO": "CONCLUIDA"
+        "FINALIZADO": "CONCLUIDA",
+        "PENDENTE": "PENDENTE",
+        "EM_ANDAMENTO": "EM_ANDAMENTO",
+        "BLOQUEADA": "BLOQUEADA",
+        "CONCLUIDA": "CONCLUIDA",
+        "ATRASADA": "ATRASADA",
+        "CANCELADA": "CANCELADA",
     }
+
+    status_origem = df["status"].astype("string").str.strip().str.upper()
+    status_sem_mapeamento = status_origem.notna() & ~status_origem.isin(status_map)
+    if status_sem_mapeamento.any():
+        desconhecidos = sorted(status_origem[status_sem_mapeamento].unique().tolist())
+        raise ValueError(f"Status de tarefa sem mapeamento: {desconhecidos}")
+
+    data_inicio_real = pd.to_datetime(df["dt_inicio"], errors="coerce")
+    data_fim_prevista = pd.to_datetime(df["dt_entrega"], errors="coerce")
+    data_fim_prevista = data_fim_prevista.fillna(data_inicio_real + pd.Timedelta(days=30))
+    data_fim_prevista = data_fim_prevista.fillna(pd.Timestamp.now().normalize() + pd.Timedelta(days=30))
+    data_fim_prevista = data_fim_prevista.where(data_inicio_real.isna() | data_fim_prevista.ge(data_inicio_real), data_inicio_real)
+
+    status_destino = status_origem.map(status_map).fillna("PENDENTE")
+    tarefa_aberta = ~status_destino.isin(["CONCLUIDA", "CANCELADA"])
+
+    vencidas_em_aberto = data_fim_prevista.dt.normalize().lt(pd.Timestamp.now().normalize()) & tarefa_aberta
+    status_destino.loc[vencidas_em_aberto] = "ATRASADA"
+    
+    atraso_resolvido = status_destino.eq("ATRASADA") & ~vencidas_em_aberto
+    status_destino.loc[atraso_resolvido] = "EM_ANDAMENTO"
 
     prioridade_map = {
         "BAIXO": "BAIXA",
@@ -393,9 +420,9 @@ def carregar_tarefas(mapa_plano_ids, mapa_colaborador_ids):
         "titulo": df["titulo"].str.strip(),
         "descricao": df["descricao"].fillna("Sem descrição"),
         "prioridade": df["prioridade"].map(prioridade_map).fillna("MEDIA"),
-        "status": df["status"].map(status_map).fillna("PENDENTE"),
-        "data_inicio_real": df["dt_inicio"],
-        "data_fim_prevista": df["dt_entrega"].fillna(pd.to_datetime(df["dt_inicio"]) + pd.Timedelta(days=30)),
+        "status": status_destino,
+        "data_inicio_real": data_inicio_real,
+        "data_fim_prevista": data_fim_prevista,
         "criado_em": pd.Timestamp.now()
     })
 
