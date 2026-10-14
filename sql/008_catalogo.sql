@@ -232,14 +232,6 @@ INSERT INTO auditoria.catalogo_dados (
 ('pdca', 'tarefa', 'criado_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, TRUE, 'Valor padrão NOW().', 'INTERNO', 'Data e hora de criação do registro.'),
 ('pdca', 'tarefa', 'atualizado_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, FALSE, 'Última modificação.', 'INTERNO', 'Data e hora da última atualização do registro.'),
 
--- pdca.alerta_prazo
-('pdca', 'alerta_prazo', 'id', 'BIGSERIAL', TRUE, FALSE, NULL, TRUE, 'Gerado automaticamente.', 'INTERNO', 'Identificador único do alerta.'),
-('pdca', 'alerta_prazo', 'id_tarefa', 'BIGINT', FALSE, TRUE, 'pdca.tarefa(id)', TRUE, 'ON DELETE CASCADE.', 'INTERNO', 'Tarefa relacionada ao alerta.'),
-('pdca', 'alerta_prazo', 'id_usuario_destino', 'BIGINT', FALSE, TRUE, 'public.usuario_sistema(id)', TRUE, 'ON DELETE CASCADE.', 'INTERNO', 'Usuário destinatário do alerta.'),
-('pdca', 'alerta_prazo', 'mensagem', 'TEXT', FALSE, FALSE, NULL, TRUE, 'Texto do alerta.', 'INTERNO', 'Mensagem enviada no alerta.'),
-('pdca', 'alerta_prazo', 'enviado_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, TRUE, 'Valor padrão NOW().', 'INTERNO', 'Data e hora de envio do alerta.'),
-('pdca', 'alerta_prazo', 'lido_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, FALSE, 'Registrado na confirmação de leitura.', 'INTERNO', 'Data e hora de leitura do alerta.'),
-
 -- pdca.tarefa_dependencia
 ('pdca', 'tarefa_dependencia', 'id_tarefa', 'BIGINT', TRUE, TRUE, 'pdca.tarefa(id)', TRUE, 'ON DELETE CASCADE. Parte da PK.', 'INTERNO', 'Tarefa que depende de outra tarefa.'),
 ('pdca', 'tarefa_dependencia', 'id_tarefa_dependencia', 'BIGINT', TRUE, TRUE, 'pdca.tarefa(id)', TRUE, 'ON DELETE CASCADE. Parte da PK. Deve ser diferente de id_tarefa.', 'INTERNO', 'Tarefa que deve ser considerada como dependência.'),

@@ -815,7 +815,7 @@ EXECUTE FUNCTION public.fn_preencher_nickname_colaborador();
 --  PROCEDURES
 --  ######################
 
--- 1 (gera alertas de atraso para tarefas que estão atrasadas e atualiza o status das mesmas para 'ATRASADA')
+-- 1 (gera notificações de atraso para tarefas vencidas e atualiza o status para 'ATRASADA')
 
 CREATE OR REPLACE PROCEDURE pdca.pr_gerar_alertas_atraso()
 LANGUAGE plpgsql
@@ -824,16 +824,30 @@ DECLARE
     r RECORD;
 BEGIN
     FOR r IN
-        SELECT id, id_responsavel, titulo, data_fim_prevista FROM pdca.tarefa
-        WHERE data_fim_prevista < CURRENT_DATE AND status NOT IN ('CONCLUIDA', 'CANCELADA')
+        SELECT t.id, t.id_responsavel, t.titulo, t.data_fim_prevista, c.id_empresa, c.id AS id_ciclo
+        FROM pdca.tarefa t
+        JOIN pdca.plano_acao pa ON pa.id = t.id_plano_acao
+        JOIN pdca.ciclo c ON c.id = pa.id_ciclo
+        WHERE t.data_fim_prevista < CURRENT_DATE AND t.status NOT IN ('CONCLUIDA', 'CANCELADA')
     LOOP
         PERFORM set_config('app.current_user_id', r.id_responsavel::text, true);
 
-        INSERT INTO pdca.alerta_prazo (id_tarefa, id_usuario_destino, mensagem) VALUES (r.id, r.id_responsavel,
-        FORMAT('A tarefa "%s" está atrasada desde %s.', r.titulo, TO_CHAR(r.data_fim_prevista, 'DD/MM/YYYY')));
+        INSERT INTO auditoria.notificacao (
+            id_usuario_destino, id_empresa, tipo, categoria, tipo_entidade,
+            id_entidade, deep_link, chave_deduplicacao
+        ) VALUES (
+            r.id_responsavel,
+            r.id_empresa,
+            'TAREFA_ATRASADA',
+            'PRAZO',
+            'TAREFA',
+            r.id::TEXT,
+            FORMAT('/ciclos/%s/tarefas/%s', r.id_ciclo, r.id),
+            FORMAT('tarefa-atrasada:%s', r.id)
+        )
+        ON CONFLICT (id_usuario_destino, chave_deduplicacao) DO NOTHING;
 
         UPDATE pdca.tarefa SET status = 'ATRASADA' WHERE id = r.id;
-
     END LOOP;
 END;
 $$;

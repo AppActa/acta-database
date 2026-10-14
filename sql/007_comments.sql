@@ -225,14 +225,6 @@ COMMENT ON COLUMN pdca.tarefa.data_fim_real IS 'Data real de conclusao da tarefa
 COMMENT ON COLUMN pdca.tarefa.criado_em IS 'Data e hora de criacao do registro.';
 COMMENT ON COLUMN pdca.tarefa.atualizado_em IS 'Data e hora da ultima atualizacao do registro.';
 
-COMMENT ON TABLE pdca.alerta_prazo IS 'Alertas enviados a usuarios sobre prazos de tarefas.';
-COMMENT ON COLUMN pdca.alerta_prazo.id IS 'Identificador unico do alerta.';
-COMMENT ON COLUMN pdca.alerta_prazo.id_tarefa IS 'Tarefa relacionada ao alerta.';
-COMMENT ON COLUMN pdca.alerta_prazo.id_usuario_destino IS 'Usuario destinatario do alerta.';
-COMMENT ON COLUMN pdca.alerta_prazo.mensagem IS 'Mensagem enviada no alerta.';
-COMMENT ON COLUMN pdca.alerta_prazo.enviado_em IS 'Data e hora de envio do alerta.';
-COMMENT ON COLUMN pdca.alerta_prazo.lido_em IS 'Data e hora de leitura do alerta.';
-
 COMMENT ON TABLE pdca.tarefa_dependencia IS 'Dependencias entre tarefas de planos de acao.';
 COMMENT ON COLUMN pdca.tarefa_dependencia.id_tarefa IS 'Tarefa que depende de outra tarefa.';
 COMMENT ON COLUMN pdca.tarefa_dependencia.id_tarefa_dependencia IS 'Tarefa que deve ser considerada como dependencia.';

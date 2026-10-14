@@ -271,14 +271,6 @@ CREATE TABLE IF NOT EXISTS pdca.tarefa (
 );
 
 
-CREATE TABLE IF NOT EXISTS pdca.alerta_prazo (
-    id BIGSERIAL PRIMARY KEY,
-    id_tarefa BIGINT NOT NULL REFERENCES pdca.tarefa(id) ON DELETE CASCADE,
-    id_usuario_destino BIGINT NOT NULL REFERENCES usuario_sistema(id) ON DELETE CASCADE,
-    mensagem TEXT NOT NULL,
-    enviado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    lido_em TIMESTAMPTZ
-);
 
 CREATE TABLE IF NOT EXISTS pdca.tarefa_dependencia (
     id_tarefa BIGINT NOT NULL REFERENCES pdca.tarefa(id) ON DELETE CASCADE,
