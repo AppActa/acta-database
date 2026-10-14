@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS usuario_sistema (
     nome VARCHAR(160) NOT NULL,
     email_login VARCHAR(254) NOT NULL UNIQUE CHECK (email_login ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'),
     firebase_uid VARCHAR(128) UNIQUE,
-    token_fcm TEXT,
+    firebase_fid TEXT,
     tipo_usuario VARCHAR(40) NOT NULL CHECK (tipo_usuario IN ('ADMIN', 'GESTOR', 'COLABORADOR')),
     status VARCHAR(40) NOT NULL CHECK (status IN ('ATIVO', 'INATIVO', 'PENDENTE', 'BLOQUEADO', 'ARQUIVADO')),
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
