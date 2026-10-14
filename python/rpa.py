@@ -374,16 +374,11 @@ def carregar_tarefas(mapa_plano_ids, mapa_colaborador_ids):
         logging.info("Nenhuma tarefa encontrada para migração.")
         return
 
+    # Valores de situacao_enum usados pelo banco de origem do primeiro ano.
     status_map = {
         "NAO_INICIADO": "PENDENTE",
         "INICIADO": "EM_ANDAMENTO",
         "FINALIZADO": "CONCLUIDA",
-        "PENDENTE": "PENDENTE",
-        "EM_ANDAMENTO": "EM_ANDAMENTO",
-        "BLOQUEADA": "BLOQUEADA",
-        "CONCLUIDA": "CONCLUIDA",
-        "ATRASADA": "ATRASADA",
-        "CANCELADA": "CANCELADA",
     }
 
     status_origem = df["status"].astype("string").str.strip().str.upper()
