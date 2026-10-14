@@ -349,4 +349,18 @@ INSERT INTO auditoria.catalogo_dados (
 ('auditoria', 'log_tarefa', 'dados_antes', 'JSONB', FALSE, FALSE, NULL, TRUE, 'Snapshot anterior (Objeto JSONB).', 'RESTRITO', 'Estado da tarefa antes da operação.'),
 ('auditoria', 'log_tarefa', 'dados_depois', 'JSONB', FALSE, FALSE, NULL, TRUE, 'Snapshot posterior (Objeto JSONB).', 'RESTRITO', 'Estado da tarefa depois da operação.'),
 ('auditoria', 'log_tarefa', 'data_log', 'TIMESTAMPTZ', FALSE, FALSE, NULL, TRUE, 'Valor padrão NOW().', 'RESTRITO', 'Data e hora de criação do log.'),
-('auditoria', 'log_tarefa', 'operacao', 'VARCHAR(40)', FALSE, FALSE, NULL, TRUE, 'INSERT, UPDATE, DELETE, LOGIN, LOGOUT, READ, EXPORT.', 'RESTRITO', 'Tipo de operação auditada.');
+('auditoria', 'log_tarefa', 'operacao', 'VARCHAR(40)', FALSE, FALSE, NULL, TRUE, 'INSERT, UPDATE, DELETE, LOGIN, LOGOUT, READ, EXPORT.', 'RESTRITO', 'Tipo de operação auditada.'),
+
+-- auditoria.notificacao
+('auditoria', 'notificacao', 'id', 'BIGSERIAL', TRUE, FALSE, NULL, TRUE, 'Gerado automaticamente pelo banco de dados.', 'INTERNO', 'Identificador único da notificação.'),
+('auditoria', 'notificacao', 'id_usuario_destino', 'BIGINT', FALSE, TRUE, 'public.usuario_sistema(id)', TRUE, 'ON DELETE CASCADE.', 'INTERNO', 'Usuário que receberá a notificação.'),
+('auditoria', 'notificacao', 'id_empresa', 'BIGINT', FALSE, TRUE, 'public.empresa(id)', TRUE, 'ON DELETE CASCADE.', 'INTERNO', 'Empresa associada à notificação.'),
+('auditoria', 'notificacao', 'tipo', 'VARCHAR(60)', FALSE, FALSE, NULL, TRUE, 'Tipo do evento que originou a notificação.', 'INTERNO', 'Tipo do evento que originou a notificação.'),
+('auditoria', 'notificacao', 'categoria', 'VARCHAR(40)', FALSE, FALSE, NULL, TRUE, 'Categoria funcional definida pela aplicação.', 'INTERNO', 'Categoria funcional da notificação.'),
+('auditoria', 'notificacao', 'tipo_entidade', 'VARCHAR(40)', FALSE, FALSE, NULL, TRUE, 'Tipo do registro relacionado.', 'INTERNO', 'Tipo do registro relacionado à notificação.'),
+('auditoria', 'notificacao', 'id_entidade', 'VARCHAR(100)', FALSE, FALSE, NULL, TRUE, 'Identificador do registro relacionado, armazenado como texto.', 'INTERNO', 'Identificador do registro relacionado.'),
+('auditoria', 'notificacao', 'deep_link', 'VARCHAR(240)', FALSE, FALSE, NULL, TRUE, 'Caminho interno para o contexto relacionado na aplicação.', 'INTERNO', 'Caminho para abrir o contexto da notificação.'),
+('auditoria', 'notificacao', 'chave_deduplicacao', 'VARCHAR(160)', FALSE, FALSE, NULL, TRUE, 'Única por destinatário; impede duplicidade para a mesma chave.', 'INTERNO', 'Chave de deduplicação da notificação por destinatário.'),
+('auditoria', 'notificacao', 'criado_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, TRUE, 'Valor padrão NOW().', 'INTERNO', 'Data e hora de criação da notificação.'),
+('auditoria', 'notificacao', 'lido_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, FALSE, 'NULL enquanto não lida.', 'INTERNO', 'Data e hora da leitura pelo destinatário.'),
+('auditoria', 'notificacao', 'expira_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, FALSE, 'Data de expiração opcional; a aplicação deve filtrar ou remover registros expirados.', 'INTERNO', 'Data e hora de expiração da notificação, quando aplicável.');

@@ -275,8 +275,13 @@ CREATE INDEX IF NOT EXISTS idx_email_colaborador ON email_colaborador (id_colabo
 -- ANTES: execution time -> 1.439
 -- DEPOIS: execution time -> 0.035
 
--- Índices Únicos
+-- Notificações por destinatário
+EXPLAIN ANALYZE SELECT * FROM auditoria.notificacao WHERE id_usuario_destino = 64 ORDER BY criado_em DESC, id DESC;
+CREATE INDEX IF NOT EXISTS ix_notificacao_destinatario_criado ON auditoria.notificacao (id_usuario_destino, criado_em DESC, id DESC);
+-- ANTES: execution time -> 0.091
+-- DEPOIS: execution time -> 0.027
 
+-- Índices Únicos
 CREATE UNIQUE INDEX IF NOT EXISTS idx_telefone_colaborador_principal
 ON public.telefone_colaborador (id_colaborador) WHERE principal = TRUE;
 
