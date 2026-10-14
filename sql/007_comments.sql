@@ -16,6 +16,7 @@ COMMENT ON COLUMN public.usuario_sistema.id_empresa IS 'Empresa a qual o usuario
 COMMENT ON COLUMN public.usuario_sistema.nome IS 'Nome do usuario.';
 COMMENT ON COLUMN public.usuario_sistema.email_login IS 'E-mail utilizado para login no sistema.';
 COMMENT ON COLUMN public.usuario_sistema.firebase_uid IS 'Identificador unico do usuario no Firebase Authentication.';
+COMMENT ON COLUMN public.usuario_sistema.token_fcm IS 'Token FCM atual do dispositivo associado ao usuario; limpar quando invalido ou no logout.';
 COMMENT ON COLUMN public.usuario_sistema.tipo_usuario IS 'Perfil de acesso do usuario: ADMIN, GESTOR ou COLABORADOR.';
 COMMENT ON COLUMN public.usuario_sistema.status IS 'Situacao do usuario no sistema.';
 COMMENT ON COLUMN public.usuario_sistema.criado_em IS 'Data e hora de criacao do registro.';

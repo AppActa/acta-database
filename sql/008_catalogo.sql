@@ -22,6 +22,7 @@ INSERT INTO auditoria.catalogo_dados (
 ('public', 'usuario_sistema', 'nome', 'VARCHAR(160)', FALSE, FALSE, NULL, TRUE,  'Nome do usuário.', 'SENSIVEL', 'Nome do usuário.'),
 ('public', 'usuario_sistema', 'email_login', 'VARCHAR(254)', FALSE, FALSE, NULL, TRUE, 'Deve corresponder ao padrão de e-mail válido. Único no sistema.', 'SENSIVEL', 'E-mail utilizado para login no sistema.'),
 ('public', 'usuario_sistema', 'firebase_uid', 'VARCHAR(128)', FALSE, FALSE, NULL, FALSE, 'Obrigatório caso o status seja ATIVO.', 'RESTRITO', 'Identificador único do usuário no Firebase Authentication.'),
+('public', 'usuario_sistema', 'token_fcm', 'TEXT', FALSE, FALSE, NULL, FALSE, 'Token FCM atual associado a um único dispositivo do usuário; atualizar quando o Firebase renovar o token e limpar quando inválido ou no logout.', 'RESTRITO', 'Token de destino usado pelo acta-fcm-api para enviar push ao usuário.'),
 ('public', 'usuario_sistema', 'tipo_usuario', 'VARCHAR(40)', FALSE, FALSE, NULL, TRUE, 'Valores aceitos: ADMIN, GESTOR ou COLABORADOR.', 'INTERNO', 'Perfil de acesso do usuário: ADMIN, GESTOR ou COLABORADOR.'),
 ('public', 'usuario_sistema', 'status', 'VARCHAR(40)', FALSE, FALSE, NULL, TRUE, 'Valores aceitos: ATIVO, INATIVO, PENDENTE, BLOQUEADO, ARQUIVADO.', 'INTERNO', 'Situação do usuário no sistema.'),
 ('public', 'usuario_sistema', 'criado_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, TRUE, 'Valor padrão obtido com NOW().', 'INTERNO', 'Data e hora de criação do registro.'),

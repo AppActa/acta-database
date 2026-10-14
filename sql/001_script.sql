@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS usuario_sistema (
     nome VARCHAR(160) NOT NULL,
     email_login VARCHAR(254) NOT NULL UNIQUE CHECK (email_login ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'),
     firebase_uid VARCHAR(128) UNIQUE,
+    token_fcm TEXT,
     tipo_usuario VARCHAR(40) NOT NULL CHECK (tipo_usuario IN ('ADMIN', 'GESTOR', 'COLABORADOR')),
     status VARCHAR(40) NOT NULL CHECK (status IN ('ATIVO', 'INATIVO', 'PENDENTE', 'BLOQUEADO', 'ARQUIVADO')),
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -269,8 +270,6 @@ CREATE TABLE IF NOT EXISTS pdca.tarefa (
     atualizado_em TIMESTAMPTZ,
     CONSTRAINT tarefa_datas_check CHECK ((data_inicio_real IS NULL OR data_fim_prevista >= data_inicio_real) AND (data_fim_real IS NULL OR data_inicio_real IS NULL OR data_fim_real >= data_inicio_real))
 );
-
-
 
 CREATE TABLE IF NOT EXISTS pdca.tarefa_dependencia (
     id_tarefa BIGINT NOT NULL REFERENCES pdca.tarefa(id) ON DELETE CASCADE,
