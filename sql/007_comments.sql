@@ -16,6 +16,7 @@ COMMENT ON COLUMN public.usuario_sistema.id_empresa IS 'Empresa a qual o usuario
 COMMENT ON COLUMN public.usuario_sistema.nome IS 'Nome do usuario.';
 COMMENT ON COLUMN public.usuario_sistema.email_login IS 'E-mail utilizado para login no sistema.';
 COMMENT ON COLUMN public.usuario_sistema.firebase_uid IS 'Identificador unico do usuario no Firebase Authentication.';
+COMMENT ON COLUMN public.usuario_sistema.firebase_fid IS 'Firebase Installation ID (FID) atual associado a um dispositivo do usuario; atualizar quando renovado e limpar no logout ou quando invalido.';
 COMMENT ON COLUMN public.usuario_sistema.tipo_usuario IS 'Perfil de acesso do usuario: ADMIN, GESTOR ou COLABORADOR.';
 COMMENT ON COLUMN public.usuario_sistema.status IS 'Situacao do usuario no sistema.';
 COMMENT ON COLUMN public.usuario_sistema.criado_em IS 'Data e hora de criacao do registro.';
@@ -225,14 +226,6 @@ COMMENT ON COLUMN pdca.tarefa.data_fim_real IS 'Data real de conclusao da tarefa
 COMMENT ON COLUMN pdca.tarefa.criado_em IS 'Data e hora de criacao do registro.';
 COMMENT ON COLUMN pdca.tarefa.atualizado_em IS 'Data e hora da ultima atualizacao do registro.';
 
-COMMENT ON TABLE pdca.alerta_prazo IS 'Alertas enviados a usuarios sobre prazos de tarefas.';
-COMMENT ON COLUMN pdca.alerta_prazo.id IS 'Identificador unico do alerta.';
-COMMENT ON COLUMN pdca.alerta_prazo.id_tarefa IS 'Tarefa relacionada ao alerta.';
-COMMENT ON COLUMN pdca.alerta_prazo.id_usuario_destino IS 'Usuario destinatario do alerta.';
-COMMENT ON COLUMN pdca.alerta_prazo.mensagem IS 'Mensagem enviada no alerta.';
-COMMENT ON COLUMN pdca.alerta_prazo.enviado_em IS 'Data e hora de envio do alerta.';
-COMMENT ON COLUMN pdca.alerta_prazo.lido_em IS 'Data e hora de leitura do alerta.';
-
 COMMENT ON TABLE pdca.tarefa_dependencia IS 'Dependencias entre tarefas de planos de acao.';
 COMMENT ON COLUMN pdca.tarefa_dependencia.id_tarefa IS 'Tarefa que depende de outra tarefa.';
 COMMENT ON COLUMN pdca.tarefa_dependencia.id_tarefa_dependencia IS 'Tarefa que deve ser considerada como dependencia.';
@@ -342,3 +335,17 @@ COMMENT ON COLUMN auditoria.log_tarefa.dados_antes IS 'Estado da tarefa antes da
 COMMENT ON COLUMN auditoria.log_tarefa.dados_depois IS 'Estado da tarefa depois da operacao.';
 COMMENT ON COLUMN auditoria.log_tarefa.data_log IS 'Data e hora de criacao do log.';
 COMMENT ON COLUMN auditoria.log_tarefa.operacao IS 'Tipo de operacao auditada.';
+
+COMMENT ON TABLE auditoria.notificacao IS 'Notificacoes destinadas aos usuarios da plataforma.';
+COMMENT ON COLUMN auditoria.notificacao.id IS 'Identificador unico da notificacao.';
+COMMENT ON COLUMN auditoria.notificacao.id_usuario_destino IS 'Usuario que recebera a notificacao.';
+COMMENT ON COLUMN auditoria.notificacao.id_empresa IS 'Empresa associada a notificacao.';
+COMMENT ON COLUMN auditoria.notificacao.tipo IS 'Tipo do evento que originou a notificacao.';
+COMMENT ON COLUMN auditoria.notificacao.categoria IS 'Categoria funcional da notificacao.';
+COMMENT ON COLUMN auditoria.notificacao.tipo_entidade IS 'Tipo do registro relacionado a notificacao.';
+COMMENT ON COLUMN auditoria.notificacao.id_entidade IS 'Identificador do registro relacionado, armazenado como texto.';
+COMMENT ON COLUMN auditoria.notificacao.deep_link IS 'Caminho para abrir o contexto relacionado na aplicacao.';
+COMMENT ON COLUMN auditoria.notificacao.chave_deduplicacao IS 'Chave unica por destinatario usada para evitar notificacoes duplicadas.';
+COMMENT ON COLUMN auditoria.notificacao.criado_em IS 'Data e hora de criacao da notificacao.';
+COMMENT ON COLUMN auditoria.notificacao.lido_em IS 'Data e hora em que o destinatario leu a notificacao, quando aplicavel.';
+COMMENT ON COLUMN auditoria.notificacao.expira_em IS 'Data e hora em que a notificacao deixa de ser valida, quando aplicavel.';

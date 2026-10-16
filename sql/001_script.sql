@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS usuario_sistema (
     nome VARCHAR(160) NOT NULL,
     email_login VARCHAR(254) NOT NULL UNIQUE CHECK (email_login ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'),
     firebase_uid VARCHAR(128) UNIQUE,
+    firebase_fid TEXT,
     tipo_usuario VARCHAR(40) NOT NULL CHECK (tipo_usuario IN ('ADMIN', 'GESTOR', 'COLABORADOR')),
     status VARCHAR(40) NOT NULL CHECK (status IN ('ATIVO', 'INATIVO', 'PENDENTE', 'BLOQUEADO', 'ARQUIVADO')),
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -270,16 +271,6 @@ CREATE TABLE IF NOT EXISTS pdca.tarefa (
     CONSTRAINT tarefa_datas_check CHECK ((data_inicio_real IS NULL OR data_fim_prevista >= data_inicio_real) AND (data_fim_real IS NULL OR data_inicio_real IS NULL OR data_fim_real >= data_inicio_real))
 );
 
-
-CREATE TABLE IF NOT EXISTS pdca.alerta_prazo (
-    id BIGSERIAL PRIMARY KEY,
-    id_tarefa BIGINT NOT NULL REFERENCES pdca.tarefa(id) ON DELETE CASCADE,
-    id_usuario_destino BIGINT NOT NULL REFERENCES usuario_sistema(id) ON DELETE CASCADE,
-    mensagem TEXT NOT NULL,
-    enviado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    lido_em TIMESTAMPTZ
-);
-
 CREATE TABLE IF NOT EXISTS pdca.tarefa_dependencia (
     id_tarefa BIGINT NOT NULL REFERENCES pdca.tarefa(id) ON DELETE CASCADE,
     id_tarefa_dependencia BIGINT NOT NULL REFERENCES pdca.tarefa(id) ON DELETE CASCADE,
@@ -393,9 +384,21 @@ CREATE TABLE IF NOT EXISTS auditoria.log_tarefa (
     CONSTRAINT log_tarefa_json_check CHECK (jsonb_typeof(dados_antes) = 'object' AND jsonb_typeof(dados_depois) = 'object')
 );
 
-
-
------------Anexos (alterar no modelo lógico)
+CREATE TABLE IF NOT EXISTS auditoria.notificacao (
+    id BIGSERIAL PRIMARY KEY,
+    id_usuario_destino BIGINT NOT NULL REFERENCES public.usuario_sistema(id) ON DELETE CASCADE,
+    id_empresa BIGINT NOT NULL REFERENCES public.empresa(id) ON DELETE CASCADE,
+    tipo VARCHAR(60) NOT NULL,
+    categoria VARCHAR(40) NOT NULL,
+    tipo_entidade VARCHAR(40) NOT NULL,
+    id_entidade VARCHAR(100) NOT NULL,
+    deep_link VARCHAR(240) NOT NULL,
+    chave_deduplicacao VARCHAR(160) NOT NULL,
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    lido_em TIMESTAMPTZ,
+    expira_em TIMESTAMPTZ,
+    CONSTRAINT uk_notificacao_destinatario_deduplicacao UNIQUE (id_usuario_destino, chave_deduplicacao)
+);
 
 CREATE TABLE IF NOT EXISTS pdca.anexo (
     id BIGSERIAL PRIMARY KEY,

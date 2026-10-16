@@ -173,17 +173,17 @@ CREATE INDEX IF NOT EXISTS idx_problema_status ON pdca.problema (status);
 -- ANTES: execution time -> 0.401
 -- DEPOIS: execution time -> 0.081
 
--- Alerta Prazo por Tarefa
-EXPLAIN ANALYZE SELECT * FROM pdca.alerta_prazo WHERE id_tarefa = 1;
-CREATE INDEX IF NOT EXISTS idx_alerta_tarefa ON pdca.alerta_prazo (id_tarefa);
--- ANTES: execution time -> 0.681
+-- Notificações por destinatário
+EXPLAIN ANALYZE SELECT * FROM auditoria.notificacao WHERE id_usuario_destino = 64 ORDER BY criado_em DESC, id DESC;
+CREATE INDEX IF NOT EXISTS ix_notificacao_destinatario_criado ON auditoria.notificacao (id_usuario_destino, criado_em DESC, id DESC);
+-- ANTES: execution time -> 0.091
 -- DEPOIS: execution time -> 0.027
 
--- Alerta Prazo por Usuário
-EXPLAIN ANALYZE SELECT * FROM pdca.alerta_prazo WHERE id_usuario_destino = 1;
-CREATE INDEX IF NOT EXISTS idx_alerta_usuario ON pdca.alerta_prazo (id_usuario_destino);
--- ANTES: execution time -> 0.329
--- DEPOIS: execution time -> 0.025
+-- Notificações não lidas por destinatário
+EXPLAIN ANALYZE SELECT * FROM auditoria.notificacao WHERE id_usuario_destino = 65 AND lido_em IS NULL ORDER BY criado_em DESC, id DESC;
+CREATE INDEX IF NOT EXISTS ix_notificacao_destinatario_nao_lida ON auditoria.notificacao (id_usuario_destino, criado_em DESC, id DESC) WHERE lido_em IS NULL;
+-- ANTES: execution time -> 0.027
+-- DEPOIS: execution time -> 0.026
 
 -- Colaborador por Empresa
 EXPLAIN ANALYZE SELECT * FROM colaborador WHERE id_empresa = 1;
@@ -276,7 +276,6 @@ CREATE INDEX IF NOT EXISTS idx_email_colaborador ON email_colaborador (id_colabo
 -- DEPOIS: execution time -> 0.035
 
 -- Índices Únicos
-
 CREATE UNIQUE INDEX IF NOT EXISTS idx_telefone_colaborador_principal
 ON public.telefone_colaborador (id_colaborador) WHERE principal = TRUE;
 

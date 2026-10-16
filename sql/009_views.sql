@@ -131,24 +131,24 @@ FROM pdca.usuario_treinamento ut
 JOIN pdca.treinamento tr ON tr.id = ut.id_treinamento
 JOIN public.usuario_sistema u ON u.id = ut.id_usuario;
 
--- 4 (fato de alertas)
+-- 4 (fato de alertas de prazo, originados como notificações)
 CREATE OR REPLACE VIEW pdca.vw_fato_alertas AS
 SELECT
-    a.id AS id_alerta,
-    a.id_usuario_destino AS id_dim_usuario,
-    u.id_empresa AS id_dim_empresa,
+    n.id AS id_alerta,
+    n.id_usuario_destino AS id_dim_usuario,
+    n.id_empresa AS id_dim_empresa,
     pa.id_ciclo AS id_dim_ciclo,
-    a.id_tarefa,
-    a.enviado_em AS id_dim_data,
+    t.id AS id_tarefa,
+    n.criado_em AS id_dim_data,
 
     1 AS qtd_alertas,
-    CASE WHEN a.lido_em IS NULL THEN 1 ELSE 0 END AS qtd_nao_lidos,
-    CASE WHEN a.lido_em IS NOT NULL THEN 1 ELSE 0 END AS qtd_lidos
+    CASE WHEN n.lido_em IS NULL THEN 1 ELSE 0 END AS qtd_nao_lidos,
+    CASE WHEN n.lido_em IS NOT NULL THEN 1 ELSE 0 END AS qtd_lidos
 
-FROM pdca.alerta_prazo a
-JOIN pdca.tarefa t ON t.id = a.id_tarefa
-LEFT JOIN pdca.plano_acao pa ON pa.id = t.id_plano_acao
-JOIN public.usuario_sistema u ON u.id = a.id_usuario_destino;
+FROM auditoria.notificacao n
+JOIN pdca.tarefa t ON t.id::TEXT = n.id_entidade
+JOIN pdca.plano_acao pa ON pa.id = t.id_plano_acao
+WHERE n.categoria = 'PRAZO' AND n.tipo_entidade = 'TAREFA' AND n.tipo = 'TAREFA_ATRASADA';
 
 -- 5 (fato de logs de auditoria)
 CREATE OR REPLACE VIEW auditoria.vw_fato_logs_auditoria AS
@@ -293,20 +293,20 @@ FROM pdca.treinamento tr
 JOIN pdca.ciclo c ON c.id = tr.id_ciclo
 JOIN public.usuario_sistema u ON u.id = tr.id_responsavel;
 
--- 4 (alertas não lidos)
+-- 4 (alertas de prazo não lidos, originados como notificações)
 CREATE OR REPLACE VIEW pdca.vw_alertas_nao_lidos AS
 SELECT
-    a.id AS id_alerta,
-    a.id_tarefa,
-    a.id_usuario_destino,
+    n.id AS id_alerta,
+    t.id AS id_tarefa,
+    n.id_usuario_destino,
     u.nome AS usuario_nome,
-    a.mensagem,
-    a.enviado_em,
+    FORMAT('A tarefa "%s" está atrasada desde %s.', t.titulo, TO_CHAR(t.data_fim_prevista, 'DD/MM/YYYY')) AS mensagem,
+    n.criado_em AS enviado_em,
     t.titulo AS tarefa_titulo
-FROM pdca.alerta_prazo a
-JOIN public.usuario_sistema u ON u.id = a.id_usuario_destino
-JOIN pdca.tarefa t ON t.id = a.id_tarefa
-WHERE a.lido_em IS NULL;
+FROM auditoria.notificacao n
+JOIN public.usuario_sistema u ON u.id = n.id_usuario_destino
+JOIN pdca.tarefa t ON t.id::TEXT = n.id_entidade
+WHERE n.lido_em IS NULL AND n.categoria = 'PRAZO' AND n.tipo_entidade = 'TAREFA' AND n.tipo = 'TAREFA_ATRASADA';
 
 -- 5 (treinamentos pendentes por colaborador)
 CREATE OR REPLACE VIEW pdca.vw_treinamentos_pendentes AS

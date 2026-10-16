@@ -22,6 +22,7 @@ INSERT INTO auditoria.catalogo_dados (
 ('public', 'usuario_sistema', 'nome', 'VARCHAR(160)', FALSE, FALSE, NULL, TRUE,  'Nome do usuário.', 'SENSIVEL', 'Nome do usuário.'),
 ('public', 'usuario_sistema', 'email_login', 'VARCHAR(254)', FALSE, FALSE, NULL, TRUE, 'Deve corresponder ao padrão de e-mail válido. Único no sistema.', 'SENSIVEL', 'E-mail utilizado para login no sistema.'),
 ('public', 'usuario_sistema', 'firebase_uid', 'VARCHAR(128)', FALSE, FALSE, NULL, FALSE, 'Obrigatório caso o status seja ATIVO.', 'RESTRITO', 'Identificador único do usuário no Firebase Authentication.'),
+('public', 'usuario_sistema', 'firebase_fid', 'TEXT', FALSE, FALSE, NULL, FALSE, 'Firebase Installation ID atual associado a um único dispositivo do usuário; atualizar quando renovado e limpar quando inválido ou no logout.', 'RESTRITO', 'Identificador de destino usado pelo acta-fcm-api para enviar push ao usuário.'),
 ('public', 'usuario_sistema', 'tipo_usuario', 'VARCHAR(40)', FALSE, FALSE, NULL, TRUE, 'Valores aceitos: ADMIN, GESTOR ou COLABORADOR.', 'INTERNO', 'Perfil de acesso do usuário: ADMIN, GESTOR ou COLABORADOR.'),
 ('public', 'usuario_sistema', 'status', 'VARCHAR(40)', FALSE, FALSE, NULL, TRUE, 'Valores aceitos: ATIVO, INATIVO, PENDENTE, BLOQUEADO, ARQUIVADO.', 'INTERNO', 'Situação do usuário no sistema.'),
 ('public', 'usuario_sistema', 'criado_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, TRUE, 'Valor padrão obtido com NOW().', 'INTERNO', 'Data e hora de criação do registro.'),
@@ -232,14 +233,6 @@ INSERT INTO auditoria.catalogo_dados (
 ('pdca', 'tarefa', 'criado_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, TRUE, 'Valor padrão NOW().', 'INTERNO', 'Data e hora de criação do registro.'),
 ('pdca', 'tarefa', 'atualizado_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, FALSE, 'Última modificação.', 'INTERNO', 'Data e hora da última atualização do registro.'),
 
--- pdca.alerta_prazo
-('pdca', 'alerta_prazo', 'id', 'BIGSERIAL', TRUE, FALSE, NULL, TRUE, 'Gerado automaticamente.', 'INTERNO', 'Identificador único do alerta.'),
-('pdca', 'alerta_prazo', 'id_tarefa', 'BIGINT', FALSE, TRUE, 'pdca.tarefa(id)', TRUE, 'ON DELETE CASCADE.', 'INTERNO', 'Tarefa relacionada ao alerta.'),
-('pdca', 'alerta_prazo', 'id_usuario_destino', 'BIGINT', FALSE, TRUE, 'public.usuario_sistema(id)', TRUE, 'ON DELETE CASCADE.', 'INTERNO', 'Usuário destinatário do alerta.'),
-('pdca', 'alerta_prazo', 'mensagem', 'TEXT', FALSE, FALSE, NULL, TRUE, 'Texto do alerta.', 'INTERNO', 'Mensagem enviada no alerta.'),
-('pdca', 'alerta_prazo', 'enviado_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, TRUE, 'Valor padrão NOW().', 'INTERNO', 'Data e hora de envio do alerta.'),
-('pdca', 'alerta_prazo', 'lido_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, FALSE, 'Registrado na confirmação de leitura.', 'INTERNO', 'Data e hora de leitura do alerta.'),
-
 -- pdca.tarefa_dependencia
 ('pdca', 'tarefa_dependencia', 'id_tarefa', 'BIGINT', TRUE, TRUE, 'pdca.tarefa(id)', TRUE, 'ON DELETE CASCADE. Parte da PK.', 'INTERNO', 'Tarefa que depende de outra tarefa.'),
 ('pdca', 'tarefa_dependencia', 'id_tarefa_dependencia', 'BIGINT', TRUE, TRUE, 'pdca.tarefa(id)', TRUE, 'ON DELETE CASCADE. Parte da PK. Deve ser diferente de id_tarefa.', 'INTERNO', 'Tarefa que deve ser considerada como dependência.'),
@@ -349,4 +342,18 @@ INSERT INTO auditoria.catalogo_dados (
 ('auditoria', 'log_tarefa', 'dados_antes', 'JSONB', FALSE, FALSE, NULL, TRUE, 'Snapshot anterior (Objeto JSONB).', 'RESTRITO', 'Estado da tarefa antes da operação.'),
 ('auditoria', 'log_tarefa', 'dados_depois', 'JSONB', FALSE, FALSE, NULL, TRUE, 'Snapshot posterior (Objeto JSONB).', 'RESTRITO', 'Estado da tarefa depois da operação.'),
 ('auditoria', 'log_tarefa', 'data_log', 'TIMESTAMPTZ', FALSE, FALSE, NULL, TRUE, 'Valor padrão NOW().', 'RESTRITO', 'Data e hora de criação do log.'),
-('auditoria', 'log_tarefa', 'operacao', 'VARCHAR(40)', FALSE, FALSE, NULL, TRUE, 'INSERT, UPDATE, DELETE, LOGIN, LOGOUT, READ, EXPORT.', 'RESTRITO', 'Tipo de operação auditada.');
+('auditoria', 'log_tarefa', 'operacao', 'VARCHAR(40)', FALSE, FALSE, NULL, TRUE, 'INSERT, UPDATE, DELETE, LOGIN, LOGOUT, READ, EXPORT.', 'RESTRITO', 'Tipo de operação auditada.'),
+
+-- auditoria.notificacao
+('auditoria', 'notificacao', 'id', 'BIGSERIAL', TRUE, FALSE, NULL, TRUE, 'Gerado automaticamente pelo banco de dados.', 'INTERNO', 'Identificador único da notificação.'),
+('auditoria', 'notificacao', 'id_usuario_destino', 'BIGINT', FALSE, TRUE, 'public.usuario_sistema(id)', TRUE, 'ON DELETE CASCADE.', 'INTERNO', 'Usuário que receberá a notificação.'),
+('auditoria', 'notificacao', 'id_empresa', 'BIGINT', FALSE, TRUE, 'public.empresa(id)', TRUE, 'ON DELETE CASCADE.', 'INTERNO', 'Empresa associada à notificação.'),
+('auditoria', 'notificacao', 'tipo', 'VARCHAR(60)', FALSE, FALSE, NULL, TRUE, 'Tipo do evento que originou a notificação.', 'INTERNO', 'Tipo do evento que originou a notificação.'),
+('auditoria', 'notificacao', 'categoria', 'VARCHAR(40)', FALSE, FALSE, NULL, TRUE, 'Categoria funcional definida pela aplicação.', 'INTERNO', 'Categoria funcional da notificação.'),
+('auditoria', 'notificacao', 'tipo_entidade', 'VARCHAR(40)', FALSE, FALSE, NULL, TRUE, 'Tipo do registro relacionado.', 'INTERNO', 'Tipo do registro relacionado à notificação.'),
+('auditoria', 'notificacao', 'id_entidade', 'VARCHAR(100)', FALSE, FALSE, NULL, TRUE, 'Identificador do registro relacionado, armazenado como texto.', 'INTERNO', 'Identificador do registro relacionado.'),
+('auditoria', 'notificacao', 'deep_link', 'VARCHAR(240)', FALSE, FALSE, NULL, TRUE, 'Caminho interno para o contexto relacionado na aplicação.', 'INTERNO', 'Caminho para abrir o contexto da notificação.'),
+('auditoria', 'notificacao', 'chave_deduplicacao', 'VARCHAR(160)', FALSE, FALSE, NULL, TRUE, 'Única por destinatário; impede duplicidade para a mesma chave.', 'INTERNO', 'Chave de deduplicação da notificação por destinatário.'),
+('auditoria', 'notificacao', 'criado_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, TRUE, 'Valor padrão NOW().', 'INTERNO', 'Data e hora de criação da notificação.'),
+('auditoria', 'notificacao', 'lido_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, FALSE, 'NULL enquanto não lida.', 'INTERNO', 'Data e hora da leitura pelo destinatário.'),
+('auditoria', 'notificacao', 'expira_em', 'TIMESTAMPTZ', FALSE, FALSE, NULL, FALSE, 'Data de expiração opcional; a aplicação deve filtrar ou remover registros expirados.', 'INTERNO', 'Data e hora de expiração da notificação, quando aplicável.');
