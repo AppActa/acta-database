@@ -136,7 +136,6 @@ CREATE INDEX IF NOT EXISTS idx_tarefa_plano ON pdca.tarefa (id_plano_acao);
 -- ANTES: execution time -> 0.545
 -- DEPOIS: execution time -> 0.075
 
-
 -- Tarefa por Responsável
 EXPLAIN ANALYZE SELECT * FROM pdca.tarefa WHERE id_responsavel = 1;
 CREATE INDEX IF NOT EXISTS idx_tarefa_responsavel ON pdca.tarefa (id_responsavel);
@@ -148,6 +147,12 @@ EXPLAIN ANALYZE SELECT * FROM pdca.tarefa WHERE status = 'EM_ANDAMENTO';
 CREATE INDEX IF NOT EXISTS idx_tarefa_status ON pdca.tarefa (status);
 -- ANTES: execution time -> 0.419
 -- DEPOIS: execution time -> 0.049
+
+-- Tarefa Dependência
+EXPLAIN ANALYZE SELECT * FROM pdca.tarefa_dependencia WHERE id_tarefa_dependencia = 1 AND id_tarefa = 1;
+CREATE INDEX IF NOT EXISTS idx_tarefa_dependencia_reversa ON pdca.tarefa_dependencia (id_tarefa_dependencia, id_tarefa);
+-- ANTES: execution time -> 0.699
+-- DEPOIS: execution time -> 0.034
 
 -- Problema por Ciclo
 EXPLAIN ANALYZE SELECT * FROM pdca.problema WHERE id_ciclo = 1;
@@ -232,6 +237,18 @@ EXPLAIN ANALYZE SELECT * FROM usuario_sistema WHERE tipo_usuario = 'ADMIN';
 CREATE INDEX IF NOT EXISTS idx_usuario_tipo ON usuario_sistema (tipo_usuario);
 -- ANTES: execution time -> 0.479
 -- DEPOIS: execution time -> 0.031
+
+-- Usuário Treinamento
+EXPLAIN ANALYZE SELECT * FROM pdca.usuario_treinamento WHERE id_treinamento = 1 AND id_usuario = 1;
+CREATE INDEX IF NOT EXISTS idx_usuario_treinamento_reverso ON pdca.usuario_treinamento (id_treinamento, id_usuario);
+-- ANTES: execution time -> 1.287
+-- DEPOIS: execution time -> 0.047
+
+-- Usuário Ciclo
+EXPLAIN ANALYZE SELECT * FROM pdca.usuario_ciclo WHERE id_ciclo = 1 AND id_usuario = 1;
+CREATE INDEX IF NOT EXISTS idx_usuario_ciclo_reverso ON pdca.usuario_ciclo (id_ciclo, id_usuario);
+-- ANTES: execution time -> 0.546
+-- DEPOIS: execution time -> 0.024
 
 -- Empresa por Status
 EXPLAIN ANALYZE SELECT * FROM empresa WHERE status = 'ATIVO';
